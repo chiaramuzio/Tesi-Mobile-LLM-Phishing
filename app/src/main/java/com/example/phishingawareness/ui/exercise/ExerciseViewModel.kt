@@ -4,8 +4,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.phishingawareness.domain.model.Exercise
-import com.example.phishingawareness.ui.exercise.SampleExerciseProvider
-
+import com.example.phishingawareness.domain.model.GenerationRequest
+import com.example.phishingawareness.domain.usecase.GenerateExerciseUseCase
 data class QuizResult(
     val correctSelected: Int,
     val totalCorrect: Int,
@@ -13,14 +13,14 @@ data class QuizResult(
 )
 
 class ExerciseViewModel(
-    sampleExerciseProvider: SampleExerciseProvider,
-    scenarioId: String
+    generateExerciseUseCase: GenerateExerciseUseCase,
+    generationRequest: GenerationRequest
 ) : ViewModel() {
 
     private val _exercise =
         MutableLiveData(
-            sampleExerciseProvider.createExercise(
-                scenarioId = scenarioId
+            generateExerciseUseCase(
+                request = generationRequest
             )
         )
 

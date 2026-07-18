@@ -13,6 +13,8 @@ import com.example.phishingawareness.databinding.FragmentExerciseBinding
 import com.example.phishingawareness.ui.exercise.adapter.QuizOptionAdapter
 import com.example.phishingawareness.PhishingAwarenessApplication
 import com.example.phishingawareness.domain.usecase.BuildQuizOptionsUseCase
+import com.example.phishingawareness.domain.model.GenerationRequest
+import com.example.phishingawareness.domain.usecase.GenerateExerciseUseCase
 
 class ExerciseFragment : Fragment() {
 
@@ -28,24 +30,35 @@ class ExerciseFragment : Fragment() {
             requireActivity().application
                     as PhishingAwarenessApplication
 
-        val repository =
-            application.appContainer.libraryRepository
+        val appContainer =
+            application.appContainer
 
         val buildQuizOptionsUseCase =
             BuildQuizOptionsUseCase(
-                libraryRepository = repository
+                libraryRepository =
+                    appContainer.libraryRepository
             )
 
-        val sampleExerciseProvider =
-            SampleExerciseProvider(
+        val generateExerciseUseCase =
+            GenerateExerciseUseCase(
+                generationRepository =
+                    appContainer.exerciseGenerationRepository,
                 buildQuizOptionsUseCase =
                     buildQuizOptionsUseCase
             )
 
+        val generationRequest =
+            GenerationRequest(
+                scenarioId = args.scenario,
+                difficulty = args.difficulty,
+                length = args.length
+            )
+
         ExerciseViewModelFactory(
-            sampleExerciseProvider =
-                sampleExerciseProvider,
-            scenarioId = args.scenario
+            generateExerciseUseCase =
+                generateExerciseUseCase,
+            generationRequest =
+                generationRequest
         )
     }
 

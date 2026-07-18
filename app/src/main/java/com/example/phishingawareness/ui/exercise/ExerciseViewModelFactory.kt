@@ -2,10 +2,14 @@ package com.example.phishingawareness.ui.exercise
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.example.phishingawareness.domain.model.GenerationRequest
+import com.example.phishingawareness.domain.usecase.GenerateExerciseUseCase
 
 class ExerciseViewModelFactory(
-    private val sampleExerciseProvider: SampleExerciseProvider,
-    private val scenarioId: String
+    private val generateExerciseUseCase:
+    GenerateExerciseUseCase,
+    private val generationRequest:
+    GenerationRequest
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -18,9 +22,10 @@ class ExerciseViewModelFactory(
             )
         ) {
             return ExerciseViewModel(
-                sampleExerciseProvider =
-                    sampleExerciseProvider,
-                scenarioId = scenarioId
+                generateExerciseUseCase =
+                    generateExerciseUseCase,
+                generationRequest =
+                    generationRequest
             ) as T
         }
 

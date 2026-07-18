@@ -4,6 +4,8 @@ import android.content.Context
 import com.example.phishingawareness.data.local.LibraryAssetDataSource
 import com.example.phishingawareness.data.repository.AssetLibraryRepository
 import com.example.phishingawareness.data.repository.LibraryRepository
+import com.example.phishingawareness.data.repository.FakeExerciseGenerationRepository
+import com.example.phishingawareness.domain.repository.ExerciseGenerationRepository
 
 class AppContainer(
     context: Context
@@ -22,5 +24,10 @@ class AppContainer(
         AssetLibraryRepository(
             dataSource = libraryAssetDataSource
         )
+    }
+
+    val exerciseGenerationRepository:
+            ExerciseGenerationRepository by lazy {
+        FakeExerciseGenerationRepository()
     }
 }
