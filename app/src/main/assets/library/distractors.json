@@ -1,0 +1,64 @@
+{
+  "distractors": [
+    {
+      "id": "PERSONALIZED_RECIPIENT_NAME",
+      "displayName": "Il messaggio usa correttamente il nome del destinatario",
+      "description": "Elemento plausibile ma non necessariamente presente nella mail simulata.",
+      "enabled": true,
+      "scenarios": [
+        "BANKING",
+        "ACCOUNT_IT"
+      ]
+    },
+    {
+      "id": "KNOWN_CONTACT",
+      "displayName": "Il mittente è un contatto conosciuto",
+      "description": "Opzione non corretta quando la mail non presenta un mittente noto.",
+      "enabled": true,
+      "scenarios": [
+        "BANKING",
+        "ACCOUNT_IT"
+      ]
+    },
+    {
+      "id": "OFFICIAL_SIGNED_ATTACHMENT",
+      "displayName": "È presente un allegato ufficiale firmato",
+      "description": "Opzione non corretta quando la mail non contiene un allegato ufficiale verificabile.",
+      "enabled": true,
+      "scenarios": [
+        "BANKING",
+        "ACCOUNT_IT"
+      ]
+    },
+    {
+      "id": "EXPECTED_COMMUNICATION",
+      "displayName": "La comunicazione era attesa",
+      "description": "Opzione non corretta quando il destinatario non aveva motivo di aspettarsi il messaggio.",
+      "enabled": true,
+      "scenarios": [
+        "BANKING",
+        "ACCOUNT_IT"
+      ]
+    },
+    {
+      "id": "SECURE_OFFICIAL_CHANNEL",
+      "displayName": "Il messaggio rimanda esclusivamente a un canale ufficiale",
+      "description": "Opzione non corretta quando il messaggio usa collegamenti o canali non verificati.",
+      "enabled": true,
+      "scenarios": [
+        "BANKING",
+        "ACCOUNT_IT"
+      ]
+    },
+    {
+      "id": "NO_ACTION_REQUIRED",
+      "displayName": "Il messaggio non richiede alcuna azione",
+      "description": "Opzione non corretta quando la mail contiene una richiesta esplicita.",
+      "enabled": true,
+      "scenarios": [
+        "BANKING",
+        "ACCOUNT_IT"
+      ]
+    }
+  ]
+}

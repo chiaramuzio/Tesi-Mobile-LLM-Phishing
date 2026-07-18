@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.example.phishingawareness.domain.model.Exercise
-import com.example.phishingawareness.domain.model.SampleExerciseProvider
+import com.example.phishingawareness.ui.exercise.SampleExerciseProvider
 
 data class QuizResult(
     val correctSelected: Int,
@@ -12,11 +12,17 @@ data class QuizResult(
     val incorrectSelected: Int
 )
 
-class ExerciseViewModel : ViewModel() {
+class ExerciseViewModel(
+    sampleExerciseProvider: SampleExerciseProvider,
+    scenarioId: String
+) : ViewModel() {
 
-    private val _exercise = MutableLiveData(
-        SampleExerciseProvider.create()
-    )
+    private val _exercise =
+        MutableLiveData(
+            sampleExerciseProvider.createExercise(
+                scenarioId = scenarioId
+            )
+        )
 
     val exercise: LiveData<Exercise>
         get() = _exercise

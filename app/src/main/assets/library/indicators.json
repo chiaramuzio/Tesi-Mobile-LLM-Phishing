@@ -1,0 +1,70 @@
+{
+  "indicators": [
+    {
+      "id": "SENDER_DOMAIN_MISMATCH",
+      "displayName": "Dominio del mittente sospetto",
+      "description": "L'indirizzo del mittente utilizza un dominio non coerente con l'organizzazione dichiarata.",
+      "observable": true,
+      "enabled": true,
+      "scenarios": [
+        "BANKING",
+        "ACCOUNT_IT"
+      ]
+    },
+    {
+      "id": "URGENCY_PRESSURE",
+      "displayName": "Pressione o urgenza",
+      "description": "Il messaggio induce il destinatario ad agire rapidamente.",
+      "observable": true,
+      "enabled": true,
+      "scenarios": [
+        "BANKING",
+        "ACCOUNT_IT"
+      ]
+    },
+    {
+      "id": "ACCOUNT_SUSPENSION_THREAT",
+      "displayName": "Minaccia di sospensione",
+      "description": "Il messaggio minaccia la sospensione o il blocco di un conto o account.",
+      "observable": true,
+      "enabled": true,
+      "scenarios": [
+        "BANKING",
+        "ACCOUNT_IT"
+      ]
+    },
+    {
+      "id": "SENSITIVE_DATA_REQUEST",
+      "displayName": "Richiesta di dati sensibili",
+      "description": "Il messaggio richiede credenziali, codici o informazioni riservate.",
+      "observable": true,
+      "enabled": true,
+      "scenarios": [
+        "BANKING",
+        "ACCOUNT_IT"
+      ]
+    },
+    {
+      "id": "SUSPICIOUS_LINK",
+      "displayName": "Collegamento sospetto",
+      "description": "Il messaggio contiene un collegamento incoerente o non riconducibile al servizio dichiarato.",
+      "observable": true,
+      "enabled": true,
+      "scenarios": [
+        "BANKING",
+        "ACCOUNT_IT"
+      ]
+    },
+    {
+      "id": "UNEXPECTED_ATTACHMENT",
+      "displayName": "Allegato inatteso",
+      "description": "Il messaggio contiene o menziona un allegato non atteso dal destinatario.",
+      "observable": true,
+      "enabled": true,
+      "scenarios": [
+        "BANKING",
+        "ACCOUNT_IT"
+      ]
+    }
+  ]
+}

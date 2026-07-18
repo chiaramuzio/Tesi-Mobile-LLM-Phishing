@@ -1,10 +1,16 @@
 {
   "libraryId": "phishing-awareness-library",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "schemaVersion": 1,
   "language": "it",
   "activeScenarios": [
     "BANKING",
     "ACCOUNT_IT"
+  ],
+  "resources": [
+    "scenarios.json",
+    "indicators.json",
+    "distractors.json"
   ]
 }
+

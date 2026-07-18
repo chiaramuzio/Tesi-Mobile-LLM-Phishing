@@ -11,6 +11,8 @@ import androidx.navigation.fragment.navArgs
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.phishingawareness.databinding.FragmentExerciseBinding
 import com.example.phishingawareness.ui.exercise.adapter.QuizOptionAdapter
+import com.example.phishingawareness.PhishingAwarenessApplication
+import com.example.phishingawareness.domain.usecase.BuildQuizOptionsUseCase
 
 class ExerciseFragment : Fragment() {
 
@@ -21,7 +23,31 @@ class ExerciseFragment : Fragment() {
 
     private val args: ExerciseFragmentArgs by navArgs()
 
-    private val viewModel: ExerciseViewModel by viewModels()
+    private val viewModel: ExerciseViewModel by viewModels {
+        val application =
+            requireActivity().application
+                    as PhishingAwarenessApplication
+
+        val repository =
+            application.appContainer.libraryRepository
+
+        val buildQuizOptionsUseCase =
+            BuildQuizOptionsUseCase(
+                libraryRepository = repository
+            )
+
+        val sampleExerciseProvider =
+            SampleExerciseProvider(
+                buildQuizOptionsUseCase =
+                    buildQuizOptionsUseCase
+            )
+
+        ExerciseViewModelFactory(
+            sampleExerciseProvider =
+                sampleExerciseProvider,
+            scenarioId = args.scenario
+        )
+    }
 
     private lateinit var quizOptionAdapter: QuizOptionAdapter
 
