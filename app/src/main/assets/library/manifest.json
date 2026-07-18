@@ -1,0 +1,10 @@
+{
+  "libraryId": "phishing-awareness-library",
+  "version": "0.1.0",
+  "schemaVersion": 1,
+  "language": "it",
+  "activeScenarios": [
+    "BANKING",
+    "ACCOUNT_IT"
+  ]
+}

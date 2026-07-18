@@ -50,24 +50,10 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:checkedButton="@={viewModel.scenarioCheckedId}"
                 android:orientation="vertical"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/scenarioLabel">
-
-                <RadioButton
-                    android:id="@+id/bankingRadioButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Banca e pagamenti" />
-
-                <RadioButton
-                    android:id="@+id/accountItRadioButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="Account e assistenza IT" />
-
             </RadioGroup>
 
             <TextView

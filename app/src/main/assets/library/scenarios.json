@@ -1,0 +1,14 @@
+{
+  "scenarios": [
+    {
+      "id": "BANKING",
+      "displayName": "Banca e pagamenti",
+      "enabled": true
+    },
+    {
+      "id": "ACCOUNT_IT",
+      "displayName": "Account e assistenza IT",
+      "enabled": true
+    }
+  ]
+}
