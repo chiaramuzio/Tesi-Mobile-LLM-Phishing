@@ -5,8 +5,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
-import com.example.phishingawareness.R
 import com.example.phishingawareness.databinding.FragmentConfigurationBinding
 
 class ConfigurationFragment : Fragment() {
@@ -15,6 +15,8 @@ class ConfigurationFragment : Fragment() {
 
     private val binding: FragmentConfigurationBinding
         get() = _binding!!
+
+    private val viewModel: ConfigurationViewModel by viewModels()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -27,6 +29,9 @@ class ConfigurationFragment : Fragment() {
             false
         )
 
+        binding.viewModel = viewModel
+        binding.lifecycleOwner = viewLifecycleOwner
+
         return binding.root
     }
 
@@ -37,42 +42,18 @@ class ConfigurationFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.startExerciseButton.setOnClickListener {
-            val scenario = resolveScenario()
-            val difficulty = resolveDifficulty()
-            val length = resolveLength()
+            val configuration =
+                viewModel.getUserConfiguration()
 
             val action =
                 ConfigurationFragmentDirections
                     .actionConfigurationFragmentToExerciseFragment(
-                        scenario = scenario,
-                        difficulty = difficulty,
-                        length = length
+                        scenario = configuration.scenario.name,
+                        difficulty = configuration.difficulty.name,
+                        length = configuration.length.name
                     )
 
             findNavController().navigate(action)
-        }
-    }
-
-    private fun resolveScenario(): String {
-        return when (binding.scenarioRadioGroup.checkedRadioButtonId) {
-            R.id.accountItRadioButton -> "ACCOUNT_IT"
-            else -> "BANKING"
-        }
-    }
-
-    private fun resolveDifficulty(): String {
-        return when (binding.difficultyRadioGroup.checkedRadioButtonId) {
-            R.id.easyRadioButton -> "EASY"
-            R.id.hardRadioButton -> "HARD"
-            else -> "MEDIUM"
-        }
-    }
-
-    private fun resolveLength(): String {
-        return when (binding.lengthRadioGroup.checkedRadioButtonId) {
-            R.id.shortRadioButton -> "SHORT"
-            R.id.longRadioButton -> "LONG"
-            else -> "MEDIUM"
         }
     }
 
