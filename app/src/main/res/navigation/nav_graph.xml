@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/configurationFragment">
+
+    <fragment
+        android:id="@+id/configurationFragment"
+        android:name="com.example.phishingawareness.ui.configuration.ConfigurationFragment"
+        android:label="Configurazione">
+
+        <action
+            android:id="@+id/action_configurationFragment_to_exerciseFragment"
+            app:destination="@id/exerciseFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/exerciseFragment"
+        android:name="com.example.phishingawareness.ui.exercise.ExerciseFragment"
+        android:label="Esercizio">
+
+        <argument
+            android:name="scenario"
+            app:argType="string" />
+
+        <argument
+            android:name="difficulty"
+            app:argType="string" />
+
+        <argument
+            android:name="length"
+            app:argType="string" />
+
+    </fragment>
+
+</navigation>
