@@ -20,3 +20,5 @@ local.properties
 *.log
 .cxx/
 .externalNativeBuild/
+# Preferenze locali dei risultati dei test Android Studio
+.idea/androidTestResultsUserPreferences.xml
