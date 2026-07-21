@@ -36,3 +36,16 @@ data class PromptTemplateSection(
     val id: String,
     val content: String
 )
+
+/**
+ * Descrive dove è conservato un template operativo.
+ *
+ * Il riferimento contiene esclusivamente metadati e il percorso relativo
+ * del file. Non legge il contenuto dell'asset.
+ */
+data class PromptTemplateReference(
+    val id: PromptTemplateId,
+    val version: String,
+    val scenario: Scenario,
+    val assetPath: String
+)
