@@ -1,14 +1,26 @@
 package com.example.phishingawareness.domain.model
 
 /**
- * Contratto di una configurazione di generazione già risolta e validata
- * dai componenti precedenti al prompt builder.
+ * Configurazione completa, compatibile e già risolta prima
+ * dell'esecuzione del prompt builder.
  *
- * Il prompt builder non deve usare questo tipo per selezionare parametri
- * o risolvere compatibilità.
- *
- * Il modello concreto dei parametri verrà completato nel prossimo blocco.
+ * Il prompt builder non seleziona, modifica o riordina i parametri.
  */
-interface ResolvedGenerationConfig {
-    val configurationId: String
-}
+data class ResolvedGenerationConfig(
+    val configurationId: String,
+    val scenario: Scenario,
+    val difficulty: Difficulty,
+    val length: ExerciseLength,
+    val language: String,
+    val sections: List<ResolvedPromptSection>
+)
+
+/**
+ * Sezione testuale già risolta e pronta per l'assemblaggio.
+ *
+ * L'ordine delle sezioni nella lista è significativo.
+ */
+data class ResolvedPromptSection(
+    val id: String,
+    val content: String
+)
