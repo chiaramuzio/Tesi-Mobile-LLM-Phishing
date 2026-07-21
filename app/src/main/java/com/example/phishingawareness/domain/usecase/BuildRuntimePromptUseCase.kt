@@ -12,12 +12,12 @@ import com.example.phishingawareness.domain.model.UserConfiguration
 import com.example.phishingawareness.domain.prompt.RuntimePromptGenerationOrchestrator
 import com.example.phishingawareness.domain.repository.LibraryRepository
 
-class BuildRuntimePromptUseCase(
+open class BuildRuntimePromptUseCase(
     private val orchestrator: RuntimePromptGenerationOrchestrator,
     private val libraryRepository: LibraryRepository
 ) {
 
-    operator fun invoke(
+    open operator fun invoke(
         request: GenerationRequest
     ): RuntimePromptGenerationResult {
         val userConfiguration =
