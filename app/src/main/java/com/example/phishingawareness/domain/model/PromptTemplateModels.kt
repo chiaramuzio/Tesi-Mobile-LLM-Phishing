@@ -49,3 +49,29 @@ data class PromptTemplateReference(
     val scenario: Scenario,
     val assetPath: String
 )
+
+/**
+ * Risultato della lettura del testo di un prompt.
+ */
+sealed interface PromptTextReadResult {
+
+    data class Success(
+        val text: String
+    ) : PromptTextReadResult
+
+    data class Failure(
+        val code: PromptTextReadIssueCode,
+        val assetPath: String,
+        val details: String? = null
+    ) : PromptTextReadResult
+}
+
+/**
+ * Identifica il tipo di problema riscontrato durante la lettura.
+ */
+enum class PromptTextReadIssueCode {
+    EMPTY_ASSET_PATH,
+    ASSET_NOT_FOUND,
+    EMPTY_CONTENT,
+    READ_ERROR
+}
