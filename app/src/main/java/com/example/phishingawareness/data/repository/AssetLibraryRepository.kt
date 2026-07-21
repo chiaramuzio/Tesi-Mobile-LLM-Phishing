@@ -78,4 +78,20 @@ class AssetLibraryRepository(
                     scenarioId in distractor.scenarios
         }
     }
+
+    override fun getIndicatorById(
+        indicatorId: String
+    ): IndicatorDefinition? {
+        return getIndicators().firstOrNull { indicator ->
+            indicator.id == indicatorId
+        }
+    }
+
+    override fun getIndicatorByPromptId(
+        promptId: String
+    ): IndicatorDefinition? {
+        return getIndicators().firstOrNull { indicator ->
+            indicator.promptId == promptId
+        }
+    }
 }

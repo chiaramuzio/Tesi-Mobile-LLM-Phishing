@@ -24,4 +24,12 @@ interface LibraryRepository {
     fun getDistractorsForScenario(
         scenarioId: String
     ): List<DistractorDefinition>
+
+    fun getIndicatorById(
+        indicatorId: String
+    ): IndicatorDefinition?
+
+    fun getIndicatorByPromptId(
+        promptId: String
+    ): IndicatorDefinition?
 }
