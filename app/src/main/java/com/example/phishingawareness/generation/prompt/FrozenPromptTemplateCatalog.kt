@@ -3,6 +3,7 @@ package com.example.phishingawareness.generation.prompt
 import com.example.phishingawareness.domain.model.PromptTemplateId
 import com.example.phishingawareness.domain.model.PromptTemplateReference
 import com.example.phishingawareness.domain.model.Scenario
+import com.example.phishingawareness.domain.prompt.PromptTemplateCatalog
 
 /**
  * Catalogo dei template zero-shot congelati utilizzati dal progetto.
@@ -10,7 +11,7 @@ import com.example.phishingawareness.domain.model.Scenario
  * Ogni riferimento collega un identificativo stabile al relativo file
  * presente negli asset Android. Il catalogo non legge né modifica i file.
  */
-object FrozenPromptTemplateCatalog {
+object FrozenPromptTemplateCatalog : PromptTemplateCatalog {
 
     val bankingZeroShotV12 = PromptTemplateReference(
         id = PromptTemplateId.BANKING_ZERO_SHOT_V12,
@@ -31,7 +32,7 @@ object FrozenPromptTemplateCatalog {
         accountItZeroShotV3
     )
 
-    fun get(
+    override fun get(
         templateId: PromptTemplateId
     ): PromptTemplateReference? {
         return all.firstOrNull { reference ->

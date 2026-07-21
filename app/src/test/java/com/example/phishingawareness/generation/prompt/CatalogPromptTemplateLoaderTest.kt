@@ -10,6 +10,8 @@ import com.example.phishingawareness.domain.prompt.PromptTextSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import com.example.phishingawareness.domain.model.PromptTemplateReference
+import com.example.phishingawareness.domain.prompt.PromptTemplateCatalog
 
 class CatalogPromptTemplateLoaderTest {
 
@@ -19,6 +21,7 @@ class CatalogPromptTemplateLoaderTest {
             "Prima riga\n\nSeconda riga con credibilità\n"
 
         val loader = CatalogPromptTemplateLoader(
+            catalog = FrozenPromptTemplateCatalog,
             textSource = InMemoryPromptTextSource(
                 contentsByPath = mapOf(
                     "prompts/zero_shot/BANKING_01_ZERO_SHOT_v12.txt" to
@@ -59,6 +62,7 @@ class CatalogPromptTemplateLoaderTest {
             "prompts/zero_shot/ACCOUNT_IT_01_ZERO_SHOT_v3.txt"
 
         val loader = CatalogPromptTemplateLoader(
+            catalog = FrozenPromptTemplateCatalog,
             textSource = InMemoryPromptTextSource(
                 contentsByPath = mapOf(
                     path to "Prompt ACCOUNT_IT"
@@ -98,6 +102,7 @@ class CatalogPromptTemplateLoaderTest {
         }
 
         val loader = CatalogPromptTemplateLoader(
+            catalog = FrozenPromptTemplateCatalog,
             textSource = failingSource
         )
 
@@ -123,5 +128,45 @@ class CatalogPromptTemplateLoaderTest {
                 "ASSET_NOT_FOUND"
             ) == true
         )
+    }
+
+    @Test
+    fun load_usesInjectedCatalogReference() {
+        val customPath = "custom/template.txt"
+        val customText = "Prompt fornito da un catalogo alternativo"
+
+        val customCatalog = object : PromptTemplateCatalog {
+            override fun get(
+                templateId: PromptTemplateId
+            ): PromptTemplateReference? {
+                return PromptTemplateReference(
+                    id = templateId,
+                    version = "custom-version",
+                    scenario = Scenario.BANKING,
+                    assetPath = customPath
+                )
+            }
+        }
+
+        val loader = CatalogPromptTemplateLoader(
+            catalog = customCatalog,
+            textSource = InMemoryPromptTextSource(
+                contentsByPath = mapOf(
+                    customPath to customText
+                )
+            )
+        )
+
+        val result = loader.load(
+            PromptTemplateId.BANKING_ZERO_SHOT_V12
+        )
+
+        assertTrue(result is PromptTemplateLoadResult.Success)
+
+        val template =
+            (result as PromptTemplateLoadResult.Success).template
+
+        assertEquals("custom-version", template.version)
+        assertEquals(customText, template.sections.single().content)
     }
 }

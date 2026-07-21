@@ -31,6 +31,7 @@ class PromptGenerationPipelineTest {
         )
 
         val loader = CatalogPromptTemplateLoader(
+            catalog = FrozenPromptTemplateCatalog,
             textSource = textSource
         )
 
@@ -129,6 +130,7 @@ class PromptGenerationPipelineTest {
                     "Testo con accenti: credenziali e identità\n"
 
         val loader = CatalogPromptTemplateLoader(
+            catalog = FrozenPromptTemplateCatalog,
             textSource = InMemoryPromptTextSource(
                 contentsByPath = mapOf(
                     assetPath to originalText

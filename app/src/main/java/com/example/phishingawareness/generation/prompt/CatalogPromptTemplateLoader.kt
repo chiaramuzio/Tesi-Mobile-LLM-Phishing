@@ -6,23 +6,26 @@ import com.example.phishingawareness.domain.model.PromptTemplateLoadIssueCode
 import com.example.phishingawareness.domain.model.PromptTemplateLoadResult
 import com.example.phishingawareness.domain.model.PromptTemplateSection
 import com.example.phishingawareness.domain.model.PromptTextReadResult
+import com.example.phishingawareness.domain.prompt.PromptTemplateCatalog
 import com.example.phishingawareness.domain.prompt.PromptTemplateLoader
 import com.example.phishingawareness.domain.prompt.PromptTextSource
 
+
 /**
- * Carica i template descritti dal catalogo congelato.
+ * Carica i template descritti da un catalogo.
  *
- * Il testo letto dall'asset viene conservato integralmente in una sola
+ * Il testo letto dalla sorgente viene conservato integralmente in una sola
  * sezione, senza trim, sostituzioni o normalizzazioni.
  */
 class CatalogPromptTemplateLoader(
+    private val catalog: PromptTemplateCatalog,
     private val textSource: PromptTextSource
 ) : PromptTemplateLoader {
 
     override fun load(
         templateId: PromptTemplateId
     ): PromptTemplateLoadResult {
-        val reference = FrozenPromptTemplateCatalog.get(templateId)
+        val reference = catalog.get(templateId)
             ?: return PromptTemplateLoadResult.Failure(
                 code = PromptTemplateLoadIssueCode.TEMPLATE_NOT_FOUND,
                 templateId = templateId
@@ -70,4 +73,5 @@ class CatalogPromptTemplateLoader(
     private companion object {
         const val FULL_PROMPT_SECTION_ID = "FULL_PROMPT"
     }
+
 }
