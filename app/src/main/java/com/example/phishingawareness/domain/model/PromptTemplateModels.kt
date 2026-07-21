@@ -75,3 +75,28 @@ enum class PromptTextReadIssueCode {
     EMPTY_CONTENT,
     READ_ERROR
 }
+
+/**
+ * Risultato del caricamento di un template operativo.
+ */
+sealed interface PromptTemplateLoadResult {
+
+    data class Success(
+        val template: PromptTemplate
+    ) : PromptTemplateLoadResult
+
+    data class Failure(
+        val code: PromptTemplateLoadIssueCode,
+        val templateId: PromptTemplateId,
+        val details: String? = null
+    ) : PromptTemplateLoadResult
+}
+
+/**
+ * Identifica il problema riscontrato durante il caricamento
+ * di un template operativo.
+ */
+enum class PromptTemplateLoadIssueCode {
+    TEMPLATE_NOT_FOUND,
+    TEXT_READ_FAILURE
+}
