@@ -12,6 +12,8 @@ android {
         }
     }
 
+    ndkVersion = "30.0.15729638"
+
     defaultConfig {
         applicationId = "com.example.phishingawareness"
         minSdk = 28
@@ -21,6 +23,23 @@ android {
 
         testInstrumentationRunner =
             "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf(
+                "arm64-v8a"
+            )
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path =
+                file(
+                    "src/main/cpp/CMakeLists.txt"
+                )
+
+            version = "4.1.2"
+        }
     }
 
     buildFeatures {
