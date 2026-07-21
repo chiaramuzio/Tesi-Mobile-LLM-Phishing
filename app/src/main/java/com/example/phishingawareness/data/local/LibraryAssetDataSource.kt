@@ -70,6 +70,8 @@ class LibraryAssetDataSource(
                 add(
                     IndicatorDefinition(
                         id = indicatorJson.getString("id"),
+                        promptId =
+                            indicatorJson.getString("promptId"),
                         displayName =
                             indicatorJson.getString("displayName"),
                         description =

@@ -17,6 +17,7 @@ data class ScenarioDefinition(
 
 data class IndicatorDefinition(
     val id: String,
+    val promptId: String,
     val displayName: String,
     val description: String,
     val observable: Boolean,

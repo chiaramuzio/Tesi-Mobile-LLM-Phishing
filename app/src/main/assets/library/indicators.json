@@ -2,6 +2,7 @@
   "indicators": [
     {
       "id": "SENDER_DOMAIN_MISMATCH",
+      "promptId": "IND_SENDER_DOMAIN_MISMATCH",
       "displayName": "Dominio del mittente sospetto",
       "description": "L'indirizzo del mittente utilizza un dominio non coerente con l'organizzazione dichiarata.",
       "observable": true,
@@ -13,6 +14,7 @@
     },
     {
       "id": "URGENCY_PRESSURE",
+      "promptId": "IND_URGENCY",
       "displayName": "Pressione o urgenza",
       "description": "Il messaggio induce il destinatario ad agire rapidamente.",
       "observable": true,
@@ -24,6 +26,7 @@
     },
     {
       "id": "ACCOUNT_SUSPENSION_THREAT",
+      "promptId": "IND_ACCOUNT_SUSPENSION_THREAT",
       "displayName": "Minaccia di sospensione",
       "description": "Il messaggio minaccia la sospensione o il blocco di un conto o account.",
       "observable": true,
@@ -35,6 +38,7 @@
     },
     {
       "id": "SENSITIVE_DATA_REQUEST",
+      "promptId": "IND_CREDENTIAL_REQUEST",
       "displayName": "Richiesta di dati sensibili",
       "description": "Il messaggio richiede credenziali, codici o informazioni riservate.",
       "observable": true,
@@ -46,6 +50,7 @@
     },
     {
       "id": "SUSPICIOUS_LINK",
+      "promptId": "IND_SUSPICIOUS_LINK",
       "displayName": "Collegamento sospetto",
       "description": "Il messaggio contiene un collegamento incoerente o non riconducibile al servizio dichiarato.",
       "observable": true,
@@ -57,6 +62,7 @@
     },
     {
       "id": "UNEXPECTED_ATTACHMENT",
+      "promptId": "IND_UNEXPECTED_ATTACHMENT",
       "displayName": "Allegato inatteso",
       "description": "Il messaggio contiene o menziona un allegato non atteso dal destinatario.",
       "observable": true,
