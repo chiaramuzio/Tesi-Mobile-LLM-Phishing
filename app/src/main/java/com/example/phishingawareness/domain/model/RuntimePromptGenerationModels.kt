@@ -20,6 +20,7 @@ sealed class RuntimePromptGenerationResult {
 }
 
 enum class RuntimePromptGenerationFailureStage {
+    REQUEST_MAPPING,
     PARAMETER_RESOLUTION,
     SECTION_RESOLUTION,
     PROMPT_BUILDING
