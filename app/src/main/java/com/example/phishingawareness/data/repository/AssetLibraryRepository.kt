@@ -5,6 +5,7 @@ import com.example.phishingawareness.domain.model.LibraryManifest
 import com.example.phishingawareness.domain.model.ScenarioDefinition
 import com.example.phishingawareness.domain.model.DistractorDefinition
 import com.example.phishingawareness.domain.model.IndicatorDefinition
+import com.example.phishingawareness.domain.repository.LibraryRepository
 
 class AssetLibraryRepository(
     private val dataSource: LibraryAssetDataSource

@@ -1,4 +1,4 @@
-package com.example.phishingawareness.data.repository
+package com.example.phishingawareness.domain.repository
 
 import com.example.phishingawareness.domain.model.LibraryManifest
 import com.example.phishingawareness.domain.model.ScenarioDefinition
