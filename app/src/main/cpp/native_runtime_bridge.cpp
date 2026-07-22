@@ -1,5 +1,6 @@
 #include <jni.h>
 
+#include <mutex>
 #include <string>
 
 #include "llama.h"
@@ -11,7 +12,13 @@ namespace {
             "NativeRuntimeBridge";
 
     constexpr const char* MODEL_LOAD_SUCCESS =
+            "OK|MODEL_LOADED";
+
+    constexpr const char* MODEL_PROBE_SUCCESS =
             "OK|MODEL_LOADED_AND_RELEASED";
+
+    constexpr const char* MODEL_UNLOAD_SUCCESS =
+            "OK|MODEL_UNLOADED";
 
     constexpr const char* MODEL_PATH_NULL =
             "ERROR|MODEL_PATH_NULL";
@@ -22,6 +29,15 @@ namespace {
     constexpr const char* MODEL_LOAD_FAILED =
             "ERROR|MODEL_LOAD_FAILED";
 
+    constexpr const char* MODEL_ALREADY_LOADED =
+            "ERROR|MODEL_ALREADY_LOADED";
+
+    constexpr const char* MODEL_NOT_LOADED =
+            "ERROR|MODEL_NOT_LOADED";
+
+    llama_model* loadedModel = nullptr;
+    std::mutex modelMutex;
+
     jstring to_jstring(
             JNIEnv* environment,
             const char* value
@@ -31,13 +47,44 @@ namespace {
         );
     }
 
+    bool read_model_path(
+            JNIEnv* environment,
+            jstring modelPath,
+            std::string& destination
+    ) {
+        if (modelPath == nullptr) {
+            return false;
+        }
+
+        const char* modelPathChars =
+                environment->GetStringUTFChars(
+                        modelPath,
+                        nullptr
+                );
+
+        if (modelPathChars == nullptr) {
+            return false;
+        }
+
+        destination.assign(
+                modelPathChars
+        );
+
+        environment->ReleaseStringUTFChars(
+                modelPath,
+                modelPathChars
+        );
+
+        return true;
+    }
+
     jstring native_version(
             JNIEnv* environment,
             jobject /* instance */
     ) {
         return to_jstring(
                 environment,
-                "phishingawareness-native-3-gguf-load"
+                "phishingawareness-native-4-model-session"
         );
     }
 
@@ -71,27 +118,20 @@ namespace {
             );
         }
 
-        const char* modelPathChars =
-                environment->GetStringUTFChars(
-                        modelPath,
-                        nullptr
-                );
+        std::string modelPathValue;
 
-        if (modelPathChars == nullptr) {
+        if (
+                !read_model_path(
+                        environment,
+                        modelPath,
+                        modelPathValue
+                )
+                ) {
             return to_jstring(
                     environment,
                     MODEL_LOAD_FAILED
             );
         }
-
-        const std::string modelPathValue(
-                modelPathChars
-        );
-
-        environment->ReleaseStringUTFChars(
-                modelPath,
-                modelPathChars
-        );
 
         if (modelPathValue.empty()) {
             return to_jstring(
@@ -103,13 +143,13 @@ namespace {
         llama_model_params modelParams =
                 llama_model_default_params();
 
-        llama_model* model =
+        llama_model* probeModel =
                 llama_model_load_from_file(
                         modelPathValue.c_str(),
                         modelParams
                 );
 
-        if (model == nullptr) {
+        if (probeModel == nullptr) {
             return to_jstring(
                     environment,
                     MODEL_LOAD_FAILED
@@ -117,12 +157,119 @@ namespace {
         }
 
         llama_model_free(
-                model
+                probeModel
         );
 
         return to_jstring(
                 environment,
+                MODEL_PROBE_SUCCESS
+        );
+    }
+
+    jstring native_load_model(
+            JNIEnv* environment,
+            jobject /* instance */,
+            jstring modelPath
+    ) {
+        if (modelPath == nullptr) {
+            return to_jstring(
+                    environment,
+                    MODEL_PATH_NULL
+            );
+        }
+
+        std::string modelPathValue;
+
+        if (
+                !read_model_path(
+                        environment,
+                        modelPath,
+                        modelPathValue
+                )
+                ) {
+            return to_jstring(
+                    environment,
+                    MODEL_LOAD_FAILED
+            );
+        }
+
+        if (modelPathValue.empty()) {
+            return to_jstring(
+                    environment,
+                    MODEL_PATH_EMPTY
+            );
+        }
+
+        std::lock_guard<std::mutex> lock(
+                modelMutex
+        );
+
+        if (loadedModel != nullptr) {
+            return to_jstring(
+                    environment,
+                    MODEL_ALREADY_LOADED
+            );
+        }
+
+        llama_model_params modelParams =
+                llama_model_default_params();
+
+        loadedModel =
+                llama_model_load_from_file(
+                        modelPathValue.c_str(),
+                        modelParams
+                );
+
+        if (loadedModel == nullptr) {
+            return to_jstring(
+                    environment,
+                    MODEL_LOAD_FAILED
+            );
+        }
+
+        return to_jstring(
+                environment,
                 MODEL_LOAD_SUCCESS
+        );
+    }
+
+    jboolean native_is_model_loaded(
+            JNIEnv* /* environment */,
+            jobject /* instance */
+    ) {
+        std::lock_guard<std::mutex> lock(
+                modelMutex
+        );
+
+        return loadedModel != nullptr
+               ? JNI_TRUE
+               : JNI_FALSE;
+    }
+
+    jstring native_unload_model(
+            JNIEnv* environment,
+            jobject /* instance */
+    ) {
+        std::lock_guard<std::mutex> lock(
+                modelMutex
+        );
+
+        if (loadedModel == nullptr) {
+            return to_jstring(
+                    environment,
+                    MODEL_NOT_LOADED
+            );
+        }
+
+        llama_model_free(
+                loadedModel
+        );
+
+        loadedModel = nullptr;
+
+        return to_jstring(
+                environment,
+                MODEL_UNLOAD_SUCCESS
         );
     }
 
@@ -135,12 +282,16 @@ namespace {
             {
                     const_cast<char*>("llamaSupportsMmap"),
                     const_cast<char*>("()Z"),
-                    reinterpret_cast<void*>(native_llama_supports_mmap)
+                    reinterpret_cast<void*>(
+                            native_llama_supports_mmap
+                    )
             },
             {
                     const_cast<char*>("llamaMaxDevices"),
                     const_cast<char*>("()J"),
-                    reinterpret_cast<void*>(native_llama_max_devices)
+                    reinterpret_cast<void*>(
+                            native_llama_max_devices
+                    )
             },
             {
                     const_cast<char*>("loadModelProbe"),
@@ -149,6 +300,31 @@ namespace {
                     ),
                     reinterpret_cast<void*>(
                             native_load_model_probe
+                    )
+            },
+            {
+                    const_cast<char*>("loadModel"),
+                    const_cast<char*>(
+                            "(Ljava/lang/String;)Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_load_model
+                    )
+            },
+            {
+                    const_cast<char*>("isModelLoaded"),
+                    const_cast<char*>("()Z"),
+                    reinterpret_cast<void*>(
+                            native_is_model_loaded
+                    )
+            },
+            {
+                    const_cast<char*>("unloadModel"),
+                    const_cast<char*>(
+                            "()Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_unload_model
                     )
             }
     };
@@ -216,5 +392,19 @@ JNI_OnUnload(
         JavaVM* /* javaVirtualMachine */,
         void* /* reserved */
 ) {
+    {
+        std::lock_guard<std::mutex> lock(
+                modelMutex
+        );
+
+        if (loadedModel != nullptr) {
+            llama_model_free(
+                    loadedModel
+            );
+
+            loadedModel = nullptr;
+        }
+    }
+
     llama_backend_free();
 }

@@ -17,4 +17,12 @@ object NativeRuntimeBridge {
     external fun loadModelProbe(
         modelPath: String
     ): String
+
+    external fun loadModel(
+        modelPath: String
+    ): String
+
+    external fun isModelLoaded(): Boolean
+
+    external fun unloadModel(): String
 }

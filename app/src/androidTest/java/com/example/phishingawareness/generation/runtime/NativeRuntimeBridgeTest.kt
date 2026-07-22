@@ -12,9 +12,9 @@ import java.io.File
 class NativeRuntimeBridgeTest {
 
     @Test
-    fun nativeVersion_ggufLoadingEnabled_returnsExpectedVersion() {
+    fun nativeVersion_modelSessionEnabled_returnsExpectedVersion() {
         assertEquals(
-            "phishingawareness-native-3-gguf-load",
+            "phishingawareness-native-4-model-session",
             NativeRuntimeBridge.nativeVersion()
         )
     }
@@ -93,6 +93,82 @@ class NativeRuntimeBridgeTest {
         assertEquals(
             "OK|MODEL_LOADED_AND_RELEASED",
             result
+        )
+    }
+
+    @Test
+    fun persistentModelSession_realGemmaModel_loadsTracksAndUnloads() {
+        val applicationContext =
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
+
+        val modelsDirectory =
+            requireNotNull(
+                applicationContext.getExternalFilesDir(
+                    "models"
+                )
+            )
+
+        val modelFile =
+            File(
+                modelsDirectory,
+                "gemma-3-4b-it-q4_0.gguf"
+            )
+
+        assertTrue(
+            "Modello GGUF non trovato: ${modelFile.absolutePath}",
+            modelFile.isFile
+        )
+
+        assertEquals(
+            3_155_051_328L,
+            modelFile.length()
+        )
+
+        if (NativeRuntimeBridge.isModelLoaded()) {
+            assertEquals(
+                "OK|MODEL_UNLOADED",
+                NativeRuntimeBridge.unloadModel()
+            )
+        }
+
+        assertEquals(
+            false,
+            NativeRuntimeBridge.isModelLoaded()
+        )
+
+        assertEquals(
+            "OK|MODEL_LOADED",
+            NativeRuntimeBridge.loadModel(
+                modelPath = modelFile.absolutePath
+            )
+        )
+
+        assertTrue(
+            NativeRuntimeBridge.isModelLoaded()
+        )
+
+        assertEquals(
+            "ERROR|MODEL_ALREADY_LOADED",
+            NativeRuntimeBridge.loadModel(
+                modelPath = modelFile.absolutePath
+            )
+        )
+
+        assertEquals(
+            "OK|MODEL_UNLOADED",
+            NativeRuntimeBridge.unloadModel()
+        )
+
+        assertEquals(
+            false,
+            NativeRuntimeBridge.isModelLoaded()
+        )
+
+        assertEquals(
+            "ERROR|MODEL_NOT_LOADED",
+            NativeRuntimeBridge.unloadModel()
         )
     }
 }
