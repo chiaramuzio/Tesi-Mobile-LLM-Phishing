@@ -12,9 +12,9 @@ import java.io.File
 class NativeRuntimeBridgeTest {
 
     @Test
-    fun nativeVersion_inferenceContextEnabled_returnsExpectedVersion() {
+    fun nativeVersion_tokenizationEnabled_returnsExpectedVersion() {
         assertEquals(
-            "phishingawareness-native-5-inference-context",
+            "phishingawareness-native-6-tokenization",
             NativeRuntimeBridge.nativeVersion()
         )
     }
@@ -277,6 +277,162 @@ class NativeRuntimeBridgeTest {
 
         assertEquals(
             "ERROR|CONTEXT_NOT_CREATED",
+            NativeRuntimeBridge.freeContext()
+        )
+
+        assertEquals(
+            "OK|MODEL_UNLOADED",
+            NativeRuntimeBridge.unloadModel()
+        )
+    }
+
+    @Test
+    fun nativeTokenization_realGemmaModel_tokenizesUtf8Prompt() {
+        val applicationContext =
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
+
+        val modelsDirectory =
+            requireNotNull(
+                applicationContext.getExternalFilesDir(
+                    "models"
+                )
+            )
+
+        val modelFile =
+            File(
+                modelsDirectory,
+                "gemma-3-4b-it-q4_0.gguf"
+            )
+
+        assertTrue(
+            "Modello GGUF non trovato: ${modelFile.absolutePath}",
+            modelFile.isFile
+        )
+
+        if (NativeRuntimeBridge.isContextReady()) {
+            assertEquals(
+                "OK|CONTEXT_FREED",
+                NativeRuntimeBridge.freeContext()
+            )
+        }
+
+        if (NativeRuntimeBridge.isModelLoaded()) {
+            assertEquals(
+                "OK|MODEL_UNLOADED",
+                NativeRuntimeBridge.unloadModel()
+            )
+        }
+
+        assertEquals(
+            "ERROR|MODEL_NOT_LOADED",
+            NativeRuntimeBridge.tokenizePrompt(
+                prompt = "Ciao",
+                addSpecial = true
+            )
+        )
+
+        assertEquals(
+            "OK|MODEL_LOADED",
+            NativeRuntimeBridge.loadModel(
+                modelPath = modelFile.absolutePath
+            )
+        )
+
+        assertEquals(
+            "ERROR|CONTEXT_NOT_CREATED",
+            NativeRuntimeBridge.tokenizePrompt(
+                prompt = "Ciao",
+                addSpecial = true
+            )
+        )
+
+        assertEquals(
+            "OK|CONTEXT_CREATED",
+            NativeRuntimeBridge.createContext(
+                contextSize = 2_048
+            )
+        )
+
+        assertEquals(
+            "ERROR|PROMPT_EMPTY",
+            NativeRuntimeBridge.tokenizePrompt(
+                prompt = "",
+                addSpecial = true
+            )
+        )
+
+        val plainResult =
+            NativeRuntimeBridge.tokenizePrompt(
+                prompt = "Ciao, come stai?",
+                addSpecial = false
+            )
+
+        val specialResult =
+            NativeRuntimeBridge.tokenizePrompt(
+                prompt = "Ciao, come stai?",
+                addSpecial = true
+            )
+
+        val utf8Result =
+            NativeRuntimeBridge.tokenizePrompt(
+                prompt =
+                    "È possibile verificare l’account aziendale?",
+                addSpecial = true
+            )
+
+        assertTrue(
+            plainResult.startsWith(
+                "OK|TOKEN_COUNT|"
+            )
+        )
+
+        assertTrue(
+            specialResult.startsWith(
+                "OK|TOKEN_COUNT|"
+            )
+        )
+
+        assertTrue(
+            utf8Result.startsWith(
+                "OK|TOKEN_COUNT|"
+            )
+        )
+
+        val plainTokenCount =
+            plainResult
+                .substringAfterLast("|")
+                .toInt()
+
+        val specialTokenCount =
+            specialResult
+                .substringAfterLast("|")
+                .toInt()
+
+        val utf8TokenCount =
+            utf8Result
+                .substringAfterLast("|")
+                .toInt()
+
+        assertTrue(
+            plainTokenCount > 0
+        )
+
+        assertTrue(
+            specialTokenCount >= plainTokenCount
+        )
+
+        assertTrue(
+            utf8TokenCount > 0
+        )
+
+        assertTrue(
+            utf8TokenCount <= 2_048
+        )
+
+        assertEquals(
+            "OK|CONTEXT_FREED",
             NativeRuntimeBridge.freeContext()
         )
 

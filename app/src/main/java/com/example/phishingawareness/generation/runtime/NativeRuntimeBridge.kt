@@ -35,4 +35,9 @@ object NativeRuntimeBridge {
     external fun contextSize(): Long
 
     external fun freeContext(): String
+
+    external fun tokenizePrompt(
+        prompt: String,
+        addSpecial: Boolean
+    ): String
 }

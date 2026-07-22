@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include "llama.h"
 
@@ -58,6 +59,24 @@ namespace {
     constexpr const char* CONTEXT_MUST_BE_FREED =
             "ERROR|CONTEXT_MUST_BE_FREED";
 
+    constexpr const char* TOKENIZE_PROMPT_NULL =
+            "ERROR|PROMPT_NULL";
+
+    constexpr const char* TOKENIZE_PROMPT_EMPTY =
+            "ERROR|PROMPT_EMPTY";
+
+    constexpr const char* TOKENIZE_MODEL_NOT_LOADED =
+            "ERROR|MODEL_NOT_LOADED";
+
+    constexpr const char* TOKENIZE_CONTEXT_NOT_CREATED =
+            "ERROR|CONTEXT_NOT_CREATED";
+
+    constexpr const char* TOKENIZE_FAILED =
+            "ERROR|TOKENIZATION_FAILED";
+
+    constexpr const char* TOKENIZE_CONTEXT_EXCEEDED =
+            "ERROR|CONTEXT_SIZE_EXCEEDED";
+
     llama_model* loadedModel = nullptr;
     llama_context* inferenceContext = nullptr;
     std::mutex modelMutex;
@@ -108,7 +127,7 @@ namespace {
     ) {
         return to_jstring(
                 environment,
-                "phishingawareness-native-5-inference-context"
+                "phishingawareness-native-6-tokenization"
         );
     }
 
@@ -428,6 +447,164 @@ namespace {
         );
     }
 
+    jstring native_tokenize_prompt(
+            JNIEnv* environment,
+            jobject /* instance */,
+            jstring prompt,
+            jboolean addSpecial
+    ) {
+        if (prompt == nullptr) {
+            return to_jstring(
+                    environment,
+                    TOKENIZE_PROMPT_NULL
+            );
+        }
+
+        const char* promptChars =
+                environment->GetStringUTFChars(
+                        prompt,
+                        nullptr
+                );
+
+        if (promptChars == nullptr) {
+            return to_jstring(
+                    environment,
+                    TOKENIZE_FAILED
+            );
+        }
+
+        const std::string promptValue(
+                promptChars
+        );
+
+        environment->ReleaseStringUTFChars(
+                prompt,
+                promptChars
+        );
+
+        if (promptValue.empty()) {
+            return to_jstring(
+                    environment,
+                    TOKENIZE_PROMPT_EMPTY
+            );
+        }
+
+        std::lock_guard<std::mutex> lock(
+                modelMutex
+        );
+
+        if (loadedModel == nullptr) {
+            return to_jstring(
+                    environment,
+                    TOKENIZE_MODEL_NOT_LOADED
+            );
+        }
+
+        if (inferenceContext == nullptr) {
+            return to_jstring(
+                    environment,
+                    TOKENIZE_CONTEXT_NOT_CREATED
+            );
+        }
+
+        const llama_vocab* vocabulary =
+                llama_model_get_vocab(
+                        loadedModel
+                );
+
+        if (vocabulary == nullptr) {
+            return to_jstring(
+                    environment,
+                    TOKENIZE_FAILED
+            );
+        }
+
+        const bool shouldAddSpecial =
+                addSpecial == JNI_TRUE;
+
+        const int32_t tokenizationProbe =
+                llama_tokenize(
+                        vocabulary,
+                        promptValue.c_str(),
+                        static_cast<int32_t>(
+                                promptValue.size()
+                        ),
+                        nullptr,
+                        0,
+                        shouldAddSpecial,
+                        false
+                );
+
+        if (tokenizationProbe >= 0) {
+            return to_jstring(
+                    environment,
+                    TOKENIZE_FAILED
+            );
+        }
+
+        const int32_t requiredTokenCount =
+                -tokenizationProbe;
+
+        if (requiredTokenCount <= 0) {
+            return to_jstring(
+                    environment,
+                    TOKENIZE_FAILED
+            );
+        }
+
+        std::vector<llama_token> tokens(
+                static_cast<std::size_t>(
+                        requiredTokenCount
+                )
+        );
+
+        const int32_t tokenCount =
+                llama_tokenize(
+                        vocabulary,
+                        promptValue.c_str(),
+                        static_cast<int32_t>(
+                                promptValue.size()
+                        ),
+                        tokens.data(),
+                        requiredTokenCount,
+                        shouldAddSpecial,
+                        false
+                );
+
+        if (tokenCount < 0) {
+            return to_jstring(
+                    environment,
+                    TOKENIZE_FAILED
+            );
+        }
+
+        const uint32_t availableContextSize =
+                llama_n_ctx(
+                        inferenceContext
+                );
+
+        if (
+                static_cast<uint32_t>(
+                        tokenCount
+                ) > availableContextSize
+                ) {
+            return to_jstring(
+                    environment,
+                    TOKENIZE_CONTEXT_EXCEEDED
+            );
+        }
+
+        const std::string result =
+                "OK|TOKEN_COUNT|" +
+                std::to_string(
+                        tokenCount
+                );
+
+        return environment->NewStringUTF(
+                result.c_str()
+        );
+    }
+
     JNINativeMethod NATIVE_METHODS[] = {
             {
                     const_cast<char*>("nativeVersion"),
@@ -511,6 +688,16 @@ namespace {
                         ),
                         reinterpret_cast<void*>(
                                 native_free_context
+                        )
+            },
+
+            {
+                const_cast<char*>("tokenizePrompt"),
+                        const_cast<char*>(
+                                "(Ljava/lang/String;Z)Ljava/lang/String;"
+                        ),
+                        reinterpret_cast<void*>(
+                                native_tokenize_prompt
                         )
             }
     };
