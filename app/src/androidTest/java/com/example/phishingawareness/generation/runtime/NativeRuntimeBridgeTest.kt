@@ -944,7 +944,12 @@ class NativeRuntimeBridgeTest {
                 NativeGenerationRequest(
                     prompt = " ",
                     addSpecial = true,
-                    maxGeneratedTokens = 4
+                    sampling =
+                        NativeSamplingConfiguration
+                            .ThesisDefault
+                            .copy(
+                                maxGeneratedTokens = 4
+                            )
                 )
             )
 
@@ -973,7 +978,12 @@ class NativeRuntimeBridgeTest {
                     prompt =
                         "Rispondi in italiano con una frase molto breve: ciao.",
                     addSpecial = true,
-                    maxGeneratedTokens = 4
+                    sampling =
+                        NativeSamplingConfiguration
+                            .ThesisDefault
+                            .copy(
+                                maxGeneratedTokens = 4
+                            )
                 )
             )
 

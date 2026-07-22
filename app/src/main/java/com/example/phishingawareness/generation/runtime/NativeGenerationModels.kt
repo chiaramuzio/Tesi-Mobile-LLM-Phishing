@@ -3,7 +3,8 @@ package com.example.phishingawareness.generation.runtime
 data class NativeGenerationRequest(
     val prompt: String,
     val addSpecial: Boolean,
-    val maxGeneratedTokens: Int
+    val sampling:
+    NativeSamplingConfiguration
 )
 
 sealed interface NativeGenerationResult {
@@ -34,6 +35,8 @@ enum class NativeGenerationFailureCode {
     PROMPT_NULL,
     PROMPT_EMPTY,
     INVALID_MAX_GENERATED_TOKENS,
+
+    INVALID_SAMPLING_CONFIGURATION,
     MODEL_NOT_LOADED,
     CONTEXT_NOT_CREATED,
     TOKENIZATION_FAILED,
