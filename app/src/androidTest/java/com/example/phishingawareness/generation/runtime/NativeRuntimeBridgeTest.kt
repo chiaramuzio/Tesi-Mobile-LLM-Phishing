@@ -12,9 +12,9 @@ import java.io.File
 class NativeRuntimeBridgeTest {
 
     @Test
-    fun nativeVersion_greedySequenceEnabled_returnsExpectedVersion() {
+    fun nativeVersion_samplingContractEnabled_returnsExpectedVersion() {
         assertEquals(
-            "phishingawareness-native-9-greedy-sequence",
+            "phishingawareness-native-10-sampling-contract",
             NativeRuntimeBridge.nativeVersion()
         )
     }
@@ -1022,6 +1022,153 @@ class NativeRuntimeBridgeTest {
         assertEquals(
             "OK|MODEL_UNLOADED",
             NativeRuntimeBridge.unloadModel()
+        )
+    }
+    @Test
+    fun nativeVersion_samplingContract_validatesAndReceivesAllParameters() {
+        assertEquals(
+            "ERROR|INVALID_MAX_GENERATED_TOKENS",
+            NativeRuntimeBridge.validateSamplingConfiguration(
+                maxGeneratedTokens = 0,
+                temperature = 0.4f,
+                topK = 40,
+                topP = 0.90f,
+                minP = 0.05f,
+                repeatPenalty = 1.05f,
+                seed = 101
+            )
+        )
+
+        assertEquals(
+            "ERROR|INVALID_TEMPERATURE",
+            NativeRuntimeBridge.validateSamplingConfiguration(
+                maxGeneratedTokens = 1_200,
+                temperature = 0.0f,
+                topK = 40,
+                topP = 0.90f,
+                minP = 0.05f,
+                repeatPenalty = 1.05f,
+                seed = 101
+            )
+        )
+
+        assertEquals(
+            "ERROR|INVALID_TOP_K",
+            NativeRuntimeBridge.validateSamplingConfiguration(
+                maxGeneratedTokens = 1_200,
+                temperature = 0.4f,
+                topK = 0,
+                topP = 0.90f,
+                minP = 0.05f,
+                repeatPenalty = 1.05f,
+                seed = 101
+            )
+        )
+
+        assertEquals(
+            "ERROR|INVALID_TOP_P",
+            NativeRuntimeBridge.validateSamplingConfiguration(
+                maxGeneratedTokens = 1_200,
+                temperature = 0.4f,
+                topK = 40,
+                topP = 1.1f,
+                minP = 0.05f,
+                repeatPenalty = 1.05f,
+                seed = 101
+            )
+        )
+
+        assertEquals(
+            "ERROR|INVALID_MIN_P",
+            NativeRuntimeBridge.validateSamplingConfiguration(
+                maxGeneratedTokens = 1_200,
+                temperature = 0.4f,
+                topK = 40,
+                topP = 0.90f,
+                minP = -0.1f,
+                repeatPenalty = 1.05f,
+                seed = 101
+            )
+        )
+
+        assertEquals(
+            "ERROR|INVALID_REPEAT_PENALTY",
+            NativeRuntimeBridge.validateSamplingConfiguration(
+                maxGeneratedTokens = 1_200,
+                temperature = 0.4f,
+                topK = 40,
+                topP = 0.90f,
+                minP = 0.05f,
+                repeatPenalty = 0.0f,
+                seed = 101
+            )
+        )
+
+        val result =
+            NativeRuntimeBridge.validateSamplingConfiguration(
+                maxGeneratedTokens = 1_200,
+                temperature = 0.4f,
+                topK = 40,
+                topP = 0.90f,
+                minP = 0.05f,
+                repeatPenalty = 1.05f,
+                seed = 101
+            )
+
+        assertTrue(
+            result,
+            result.startsWith(
+                "OK|SAMPLING_CONFIGURATION|"
+            )
+        )
+
+        assertTrue(
+            result,
+            result.contains(
+                "|MAX_GENERATED_TOKENS|1200|"
+            )
+        )
+
+        assertTrue(
+            result,
+            result.contains(
+                "|TEMPERATURE|0.4|"
+            )
+        )
+
+        assertTrue(
+            result,
+            result.contains(
+                "|TOP_K|40|"
+            )
+        )
+
+        assertTrue(
+            result,
+            result.contains(
+                "|TOP_P|0.9|"
+            )
+        )
+
+        assertTrue(
+            result,
+            result.contains(
+                "|MIN_P|0.05|"
+            )
+        )
+
+        assertTrue(
+            result,
+            result.contains(
+                "|REPEAT_PENALTY|1.05|"
+            )
+        )
+
+        assertTrue(
+            result,
+            result.endsWith(
+                "|SEED|101"
+            )
         )
     }
 }

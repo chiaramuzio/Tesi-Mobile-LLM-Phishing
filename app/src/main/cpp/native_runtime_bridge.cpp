@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <cmath>
 
 #include "llama.h"
 
@@ -165,6 +166,24 @@ namespace {
 
     constexpr int32_t MAX_GREEDY_PROBE_TOKENS = 8;
 
+    constexpr const char* SAMPLING_INVALID_MAX_TOKENS =
+            "ERROR|INVALID_MAX_GENERATED_TOKENS";
+
+    constexpr const char* SAMPLING_INVALID_TEMPERATURE =
+            "ERROR|INVALID_TEMPERATURE";
+
+    constexpr const char* SAMPLING_INVALID_TOP_K =
+            "ERROR|INVALID_TOP_K";
+
+    constexpr const char* SAMPLING_INVALID_TOP_P =
+            "ERROR|INVALID_TOP_P";
+
+    constexpr const char* SAMPLING_INVALID_MIN_P =
+            "ERROR|INVALID_MIN_P";
+
+    constexpr const char* SAMPLING_INVALID_REPEAT_PENALTY =
+            "ERROR|INVALID_REPEAT_PENALTY";
+
     llama_model* loadedModel = nullptr;
     llama_context* inferenceContext = nullptr;
     std::mutex modelMutex;
@@ -300,7 +319,7 @@ namespace {
     ) {
         return to_jstring(
                 environment,
-                "phishingawareness-native-9-greedy-sequence"
+                "phishingawareness-native-10-sampling-contract"
         );
     }
 
@@ -1692,11 +1711,108 @@ namespace {
         );
     }
 
+    jstring native_validate_sampling_configuration(
+            JNIEnv* environment,
+            jobject /* instance */,
+            jint maxGeneratedTokens,
+            jfloat temperature,
+            jint topK,
+            jfloat topP,
+            jfloat minP,
+            jfloat repeatPenalty,
+            jint seed
+    ) {
+        if (maxGeneratedTokens <= 0) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_MAX_TOKENS
+            );
+        }
+
+        if (
+                !std::isfinite(temperature) ||
+                temperature <= 0.0F
+                ) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_TEMPERATURE
+            );
+        }
+
+        if (topK <= 0) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_TOP_K
+            );
+        }
+
+        if (
+                !std::isfinite(topP) ||
+                topP <= 0.0F ||
+                topP > 1.0F
+                ) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_TOP_P
+            );
+        }
+
+        if (
+                !std::isfinite(minP) ||
+                minP < 0.0F ||
+                minP > 1.0F
+                ) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_MIN_P
+            );
+        }
+
+        if (
+                !std::isfinite(repeatPenalty) ||
+                repeatPenalty <= 0.0F
+                ) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_REPEAT_PENALTY
+            );
+        }
+
+        std::ostringstream result;
+
+        result
+                << "OK|SAMPLING_CONFIGURATION"
+                << "|MAX_GENERATED_TOKENS|"
+                << maxGeneratedTokens
+                << "|TEMPERATURE|"
+                << temperature
+                << "|TOP_K|"
+                << topK
+                << "|TOP_P|"
+                << topP
+                << "|MIN_P|"
+                << minP
+                << "|REPEAT_PENALTY|"
+                << repeatPenalty
+                << "|SEED|"
+                << seed;
+
+        const std::string resultValue =
+                result.str();
+
+        return to_jstring(
+                environment,
+                resultValue.c_str()
+        );
+    }
+
     JNINativeMethod NATIVE_METHODS[] = {
             {
                     const_cast<char*>("nativeVersion"),
                     const_cast<char*>("()Ljava/lang/String;"),
-                    reinterpret_cast<void*>(native_version)
+                    reinterpret_cast<void*>(
+                            native_version
+                    )
             },
             {
                     const_cast<char*>("llamaSupportsMmap"),
@@ -1746,48 +1862,47 @@ namespace {
                             native_unload_model
                     )
             },
-
             {
-                const_cast<char*>("createContext"),
-                        const_cast<char*>("(I)Ljava/lang/String;"),
-                        reinterpret_cast<void*>(
-                                native_create_context
-                        )
+                    const_cast<char*>("createContext"),
+                    const_cast<char*>(
+                            "(I)Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_create_context
+                    )
             },
             {
-                const_cast<char*>("isContextReady"),
-                        const_cast<char*>("()Z"),
-                        reinterpret_cast<void*>(
-                                native_is_context_ready
-                        )
+                    const_cast<char*>("isContextReady"),
+                    const_cast<char*>("()Z"),
+                    reinterpret_cast<void*>(
+                            native_is_context_ready
+                    )
             },
             {
-                const_cast<char*>("contextSize"),
-                        const_cast<char*>("()J"),
-                        reinterpret_cast<void*>(
-                                native_context_size
-                        )
+                    const_cast<char*>("contextSize"),
+                    const_cast<char*>("()J"),
+                    reinterpret_cast<void*>(
+                            native_context_size
+                    )
             },
             {
-                const_cast<char*>("freeContext"),
-                        const_cast<char*>(
-                                "()Ljava/lang/String;"
-                        ),
-                        reinterpret_cast<void*>(
-                                native_free_context
-                        )
+                    const_cast<char*>("freeContext"),
+                    const_cast<char*>(
+                            "()Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_free_context
+                    )
             },
-
             {
-                const_cast<char*>("tokenizePrompt"),
-                        const_cast<char*>(
-                                "(Ljava/lang/String;Z)Ljava/lang/String;"
-                        ),
-                        reinterpret_cast<void*>(
-                                native_tokenize_prompt
-                        )
+                    const_cast<char*>("tokenizePrompt"),
+                    const_cast<char*>(
+                            "(Ljava/lang/String;Z)Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_tokenize_prompt
+                    )
             },
-
             {
                     const_cast<char*>("decodePromptProbe"),
                     const_cast<char*>(
@@ -1797,17 +1912,15 @@ namespace {
                             native_decode_prompt_probe
                     )
             },
-
             {
-                const_cast<char*>("generateFirstTokenGreedy"),
-                        const_cast<char*>(
-                                "(Ljava/lang/String;Z)Ljava/lang/String;"
-                        ),
-                        reinterpret_cast<void*>(
-                                native_generate_first_token_greedy
-                        )
+                    const_cast<char*>("generateFirstTokenGreedy"),
+                    const_cast<char*>(
+                            "(Ljava/lang/String;Z)Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_generate_first_token_greedy
+                    )
             },
-
             {
                     const_cast<char*>("generateGreedySequence"),
                     const_cast<char*>(
@@ -1816,10 +1929,21 @@ namespace {
                     reinterpret_cast<void*>(
                             native_generate_greedy_sequence
                     )
+            },
+            {
+                    const_cast<char*>(
+                            "validateSamplingConfiguration"
+                    ),
+                    const_cast<char*>(
+                            "(IFIFFFI)Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_validate_sampling_configuration
+                    )
             }
     };
 
-}  // namespace
+} // namespace
 
 extern "C"
 JNIEXPORT jint JNICALL

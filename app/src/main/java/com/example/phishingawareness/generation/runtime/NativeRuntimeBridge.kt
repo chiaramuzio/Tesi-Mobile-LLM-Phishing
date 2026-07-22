@@ -56,4 +56,14 @@ object NativeRuntimeBridge {
         addSpecial: Boolean,
         maxGeneratedTokens: Int
     ): String
+
+    external fun validateSamplingConfiguration(
+        maxGeneratedTokens: Int,
+        temperature: Float,
+        topK: Int,
+        topP: Float,
+        minP: Float,
+        repeatPenalty: Float,
+        seed: Int
+    ): String
 }
