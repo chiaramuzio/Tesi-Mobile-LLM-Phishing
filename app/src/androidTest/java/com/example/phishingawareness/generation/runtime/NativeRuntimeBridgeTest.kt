@@ -896,4 +896,122 @@ class NativeRuntimeBridgeTest {
             NativeRuntimeBridge.unloadModel()
         )
     }
+
+    @Test
+    fun nativeGenerationExecutor_realGemmaModel_returnsStructuredResult() {
+        val applicationContext =
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
+
+        val modelsDirectory =
+            requireNotNull(
+                applicationContext.getExternalFilesDir(
+                    "models"
+                )
+            )
+
+        val modelFile =
+            File(
+                modelsDirectory,
+                "gemma-3-4b-it-q4_0.gguf"
+            )
+
+        assertTrue(
+            "Modello GGUF non trovato: ${modelFile.absolutePath}",
+            modelFile.isFile
+        )
+
+        if (NativeRuntimeBridge.isContextReady()) {
+            assertEquals(
+                "OK|CONTEXT_FREED",
+                NativeRuntimeBridge.freeContext()
+            )
+        }
+
+        if (NativeRuntimeBridge.isModelLoaded()) {
+            assertEquals(
+                "OK|MODEL_UNLOADED",
+                NativeRuntimeBridge.unloadModel()
+            )
+        }
+
+        val executor: NativeGenerationExecutor =
+            JniNativeGenerationExecutor()
+
+        val invalidResult =
+            executor.generate(
+                NativeGenerationRequest(
+                    prompt = " ",
+                    addSpecial = true,
+                    maxGeneratedTokens = 4
+                )
+            )
+
+        assertEquals(
+            NativeGenerationFailureCode.PROMPT_EMPTY,
+            (invalidResult as NativeGenerationResult.Failure).code
+        )
+
+        assertEquals(
+            "OK|MODEL_LOADED",
+            NativeRuntimeBridge.loadModel(
+                modelPath = modelFile.absolutePath
+            )
+        )
+
+        assertEquals(
+            "OK|CONTEXT_CREATED",
+            NativeRuntimeBridge.createContext(
+                contextSize = 2_048
+            )
+        )
+
+        val result =
+            executor.generate(
+                NativeGenerationRequest(
+                    prompt =
+                        "Rispondi in italiano con una frase molto breve: ciao.",
+                    addSpecial = true,
+                    maxGeneratedTokens = 4
+                )
+            )
+
+        assertTrue(
+            result.toString(),
+            result is NativeGenerationResult.Success
+        )
+
+        result as NativeGenerationResult.Success
+
+        assertEquals(
+            4,
+            result.requestedTokenCount
+        )
+
+        assertTrue(
+            result.generatedTokenCount in 1..4
+        )
+
+        assertEquals(
+            result.generatedTokenCount,
+            result.tokenIds.size
+        )
+
+        assertTrue(
+            result.tokenIds.all { tokenId ->
+                tokenId >= 0
+            }
+        )
+
+        assertEquals(
+            "OK|CONTEXT_FREED",
+            NativeRuntimeBridge.freeContext()
+        )
+
+        assertEquals(
+            "OK|MODEL_UNLOADED",
+            NativeRuntimeBridge.unloadModel()
+        )
+    }
 }
