@@ -45,4 +45,9 @@ object NativeRuntimeBridge {
         prompt: String,
         addSpecial: Boolean
     ): String
+
+    external fun generateFirstTokenGreedy(
+        prompt: String,
+        addSpecial: Boolean
+    ): String
 }

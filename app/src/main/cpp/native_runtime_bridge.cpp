@@ -1,6 +1,8 @@
 #include <jni.h>
 
+#include <iomanip>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -98,10 +100,63 @@ namespace {
     constexpr const char* DECODE_FAILED =
             "ERROR|PROMPT_DECODE_FAILED";
 
+    constexpr const char* FIRST_TOKEN_PROMPT_NULL =
+            "ERROR|PROMPT_NULL";
+
+    constexpr const char* FIRST_TOKEN_PROMPT_EMPTY =
+            "ERROR|PROMPT_EMPTY";
+
+    constexpr const char* FIRST_TOKEN_MODEL_NOT_LOADED =
+            "ERROR|MODEL_NOT_LOADED";
+
+    constexpr const char* FIRST_TOKEN_CONTEXT_NOT_CREATED =
+            "ERROR|CONTEXT_NOT_CREATED";
+
+    constexpr const char* FIRST_TOKEN_TOKENIZATION_FAILED =
+            "ERROR|TOKENIZATION_FAILED";
+
+    constexpr const char* FIRST_TOKEN_CONTEXT_EXCEEDED =
+            "ERROR|CONTEXT_SIZE_EXCEEDED";
+
+    constexpr const char* FIRST_TOKEN_PROMPT_DECODE_FAILED =
+            "ERROR|PROMPT_DECODE_FAILED";
+
+    constexpr const char* FIRST_TOKEN_SAMPLER_FAILED =
+            "ERROR|SAMPLER_CREATION_FAILED";
+
+    constexpr const char* FIRST_TOKEN_PIECE_FAILED =
+            "ERROR|TOKEN_PIECE_FAILED";
+
+    constexpr const char* FIRST_TOKEN_DECODE_FAILED =
+            "ERROR|FIRST_TOKEN_DECODE_FAILED";
+
     llama_model* loadedModel = nullptr;
     llama_context* inferenceContext = nullptr;
     std::mutex modelMutex;
 
+    std::string bytes_to_hex(
+            const char* data,
+            const std::size_t size
+    ) {
+        std::ostringstream stream;
+
+        stream << std::hex
+               << std::setfill('0');
+
+        for (std::size_t index = 0; index < size; ++index) {
+            const auto byteValue =
+                    static_cast<unsigned char>(
+                            data[index]
+                    );
+
+            stream << std::setw(2)
+                   << static_cast<unsigned int>(
+                           byteValue
+                   );
+        }
+
+        return stream.str();
+    }
     jstring to_jstring(
             JNIEnv* environment,
             const char* value
@@ -148,7 +203,7 @@ namespace {
     ) {
         return to_jstring(
                 environment,
-                "phishingawareness-native-7-prompt-decode"
+                "phishingawareness-native-8-first-token"
         );
     }
 
@@ -830,6 +885,347 @@ namespace {
         );
     }
 
+    jstring native_generate_first_token_greedy(
+            JNIEnv* environment,
+            jobject /* instance */,
+            jstring prompt,
+            jboolean addSpecial
+    ) {
+        if (prompt == nullptr) {
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_PROMPT_NULL
+            );
+        }
+
+        const char* promptChars =
+                environment->GetStringUTFChars(
+                        prompt,
+                        nullptr
+                );
+
+        if (promptChars == nullptr) {
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_TOKENIZATION_FAILED
+            );
+        }
+
+        const std::string promptValue(
+                promptChars
+        );
+
+        environment->ReleaseStringUTFChars(
+                prompt,
+                promptChars
+        );
+
+        if (promptValue.empty()) {
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_PROMPT_EMPTY
+            );
+        }
+
+        std::lock_guard<std::mutex> lock(
+                modelMutex
+        );
+
+        if (loadedModel == nullptr) {
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_MODEL_NOT_LOADED
+            );
+        }
+
+        if (inferenceContext == nullptr) {
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_CONTEXT_NOT_CREATED
+            );
+        }
+
+        const llama_vocab* vocabulary =
+                llama_model_get_vocab(
+                        loadedModel
+                );
+
+        if (vocabulary == nullptr) {
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_TOKENIZATION_FAILED
+            );
+        }
+
+        const bool shouldAddSpecial =
+                addSpecial == JNI_TRUE;
+
+        const int32_t tokenizationProbe =
+                llama_tokenize(
+                        vocabulary,
+                        promptValue.c_str(),
+                        static_cast<int32_t>(
+                                promptValue.size()
+                        ),
+                        nullptr,
+                        0,
+                        shouldAddSpecial,
+                        false
+                );
+
+        if (tokenizationProbe >= 0) {
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_TOKENIZATION_FAILED
+            );
+        }
+
+        const int32_t requiredTokenCount =
+                -tokenizationProbe;
+
+        if (requiredTokenCount <= 0) {
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_TOKENIZATION_FAILED
+            );
+        }
+
+        const uint32_t availableContextSize =
+                llama_n_ctx(
+                        inferenceContext
+                );
+
+        if (
+                static_cast<uint32_t>(
+                        requiredTokenCount + 1
+                ) > availableContextSize
+                ) {
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_CONTEXT_EXCEEDED
+            );
+        }
+
+        std::vector<llama_token> promptTokens(
+                static_cast<std::size_t>(
+                        requiredTokenCount
+                )
+        );
+
+        const int32_t promptTokenCount =
+                llama_tokenize(
+                        vocabulary,
+                        promptValue.c_str(),
+                        static_cast<int32_t>(
+                                promptValue.size()
+                        ),
+                        promptTokens.data(),
+                        requiredTokenCount,
+                        shouldAddSpecial,
+                        false
+                );
+
+        if (promptTokenCount <= 0) {
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_TOKENIZATION_FAILED
+            );
+        }
+
+        llama_memory_t contextMemory =
+                llama_get_memory(
+                        inferenceContext
+                );
+
+        if (contextMemory == nullptr) {
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_PROMPT_DECODE_FAILED
+            );
+        }
+
+        llama_memory_clear(
+                contextMemory,
+                true
+        );
+
+        llama_batch promptBatch =
+                llama_batch_get_one(
+                        promptTokens.data(),
+                        promptTokenCount
+                );
+
+        const int32_t promptDecodeResult =
+                llama_decode(
+                        inferenceContext,
+                        promptBatch
+                );
+
+        if (promptDecodeResult != 0) {
+            llama_memory_clear(
+                    contextMemory,
+                    true
+            );
+
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_PROMPT_DECODE_FAILED
+            );
+        }
+
+        llama_sampler* greedySampler =
+                llama_sampler_init_greedy();
+
+        if (greedySampler == nullptr) {
+            llama_memory_clear(
+                    contextMemory,
+                    true
+            );
+
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_SAMPLER_FAILED
+            );
+        }
+
+        const llama_token sampledToken =
+                llama_sampler_sample(
+                        greedySampler,
+                        inferenceContext,
+                        -1
+                );
+
+        llama_sampler_free(
+                greedySampler
+        );
+
+        const bool isEndOfGeneration =
+                llama_vocab_is_eog(
+                        vocabulary,
+                        sampledToken
+                );
+
+        std::vector<char> pieceBuffer(
+                256
+        );
+
+        int32_t pieceSize =
+                llama_token_to_piece(
+                        vocabulary,
+                        sampledToken,
+                        pieceBuffer.data(),
+                        static_cast<int32_t>(
+                                pieceBuffer.size()
+                        ),
+                        0,
+                        true
+                );
+
+        if (pieceSize < 0) {
+            const int32_t requiredPieceSize =
+                    -pieceSize;
+
+            if (requiredPieceSize <= 0) {
+                llama_memory_clear(
+                        contextMemory,
+                        true
+                );
+
+                return to_jstring(
+                        environment,
+                        FIRST_TOKEN_PIECE_FAILED
+                );
+            }
+
+            pieceBuffer.resize(
+                    static_cast<std::size_t>(
+                            requiredPieceSize
+                    )
+            );
+
+            pieceSize =
+                    llama_token_to_piece(
+                            vocabulary,
+                            sampledToken,
+                            pieceBuffer.data(),
+                            requiredPieceSize,
+                            0,
+                            true
+                    );
+        }
+
+        if (pieceSize < 0) {
+            llama_memory_clear(
+                    contextMemory,
+                    true
+            );
+
+            return to_jstring(
+                    environment,
+                    FIRST_TOKEN_PIECE_FAILED
+            );
+        }
+
+        if (!isEndOfGeneration) {
+            llama_token tokenToDecode =
+                    sampledToken;
+
+            llama_batch tokenBatch =
+                    llama_batch_get_one(
+                            &tokenToDecode,
+                            1
+                    );
+
+            const int32_t tokenDecodeResult =
+                    llama_decode(
+                            inferenceContext,
+                            tokenBatch
+                    );
+
+            if (tokenDecodeResult != 0) {
+                llama_memory_clear(
+                        contextMemory,
+                        true
+                );
+
+                return to_jstring(
+                        environment,
+                        FIRST_TOKEN_DECODE_FAILED
+                );
+            }
+        }
+
+        const std::string pieceHex =
+                bytes_to_hex(
+                        pieceBuffer.data(),
+                        static_cast<std::size_t>(
+                                pieceSize
+                        )
+                );
+
+        llama_memory_clear(
+                contextMemory,
+                true
+        );
+
+        const std::string result =
+                "OK|FIRST_TOKEN|TOKEN_ID|" +
+                std::to_string(
+                        sampledToken
+                ) +
+                "|EOG|" +
+                (
+                        isEndOfGeneration
+                        ? "1"
+                        : "0"
+                ) +
+                "|PIECE_HEX|" +
+                pieceHex;
+
+        return environment->NewStringUTF(
+                result.c_str()
+        );
+    }
     JNINativeMethod NATIVE_METHODS[] = {
             {
                     const_cast<char*>("nativeVersion"),
@@ -934,6 +1330,16 @@ namespace {
                     reinterpret_cast<void*>(
                             native_decode_prompt_probe
                     )
+            },
+
+            {
+                const_cast<char*>("generateFirstTokenGreedy"),
+                        const_cast<char*>(
+                                "(Ljava/lang/String;Z)Ljava/lang/String;"
+                        ),
+                        reinterpret_cast<void*>(
+                                native_generate_first_token_greedy
+                        )
             }
     };
 

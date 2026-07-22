@@ -12,9 +12,9 @@ import java.io.File
 class NativeRuntimeBridgeTest {
 
     @Test
-    fun nativeVersion_promptDecodeEnabled_returnsExpectedVersion() {
+    fun nativeVersion_firstTokenEnabled_returnsExpectedVersion() {
         assertEquals(
-            "phishingawareness-native-7-prompt-decode",
+            "phishingawareness-native-8-first-token",
             NativeRuntimeBridge.nativeVersion()
         )
     }
@@ -557,6 +557,143 @@ class NativeRuntimeBridgeTest {
                 "OK|PROMPT_DECODED|TOKEN_COUNT|"
             )
         )
+
+        assertEquals(
+            "OK|CONTEXT_FREED",
+            NativeRuntimeBridge.freeContext()
+        )
+
+        assertEquals(
+            "OK|MODEL_UNLOADED",
+            NativeRuntimeBridge.unloadModel()
+        )
+    }
+
+    @Test
+    fun nativeFirstToken_realGemmaModel_generatesGreedyToken() {
+        val applicationContext =
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
+
+        val modelsDirectory =
+            requireNotNull(
+                applicationContext.getExternalFilesDir(
+                    "models"
+                )
+            )
+
+        val modelFile =
+            File(
+                modelsDirectory,
+                "gemma-3-4b-it-q4_0.gguf"
+            )
+
+        assertTrue(
+            "Modello GGUF non trovato: ${modelFile.absolutePath}",
+            modelFile.isFile
+        )
+
+        if (NativeRuntimeBridge.isContextReady()) {
+            assertEquals(
+                "OK|CONTEXT_FREED",
+                NativeRuntimeBridge.freeContext()
+            )
+        }
+
+        if (NativeRuntimeBridge.isModelLoaded()) {
+            assertEquals(
+                "OK|MODEL_UNLOADED",
+                NativeRuntimeBridge.unloadModel()
+            )
+        }
+
+        assertEquals(
+            "ERROR|MODEL_NOT_LOADED",
+            NativeRuntimeBridge.generateFirstTokenGreedy(
+                prompt = "Ciao",
+                addSpecial = true
+            )
+        )
+
+        assertEquals(
+            "OK|MODEL_LOADED",
+            NativeRuntimeBridge.loadModel(
+                modelPath = modelFile.absolutePath
+            )
+        )
+
+        assertEquals(
+            "ERROR|CONTEXT_NOT_CREATED",
+            NativeRuntimeBridge.generateFirstTokenGreedy(
+                prompt = "Ciao",
+                addSpecial = true
+            )
+        )
+
+        assertEquals(
+            "OK|CONTEXT_CREATED",
+            NativeRuntimeBridge.createContext(
+                contextSize = 2_048
+            )
+        )
+
+        assertEquals(
+            "ERROR|PROMPT_EMPTY",
+            NativeRuntimeBridge.generateFirstTokenGreedy(
+                prompt = "",
+                addSpecial = true
+            )
+        )
+
+        val result =
+            NativeRuntimeBridge.generateFirstTokenGreedy(
+                prompt =
+                    "Rispondi in italiano con una sola parola: ciao.",
+                addSpecial = true
+            )
+
+        assertTrue(
+            result,
+            result.startsWith(
+                "OK|FIRST_TOKEN|TOKEN_ID|"
+            )
+        )
+
+        val tokenId =
+            result
+                .substringAfter("|TOKEN_ID|")
+                .substringBefore("|EOG|")
+                .toInt()
+
+        val eogFlag =
+            result
+                .substringAfter("|EOG|")
+                .substringBefore("|PIECE_HEX|")
+
+        val pieceHex =
+            result.substringAfter(
+                "|PIECE_HEX|"
+            )
+
+        assertTrue(
+            tokenId >= 0
+        )
+
+        assertTrue(
+            eogFlag == "0" ||
+                    eogFlag == "1"
+        )
+
+        assertTrue(
+            pieceHex.length % 2 == 0
+        )
+
+        if (eogFlag == "0") {
+            assertTrue(
+                pieceHex.isNotEmpty()
+            )
+        }
 
         assertEquals(
             "OK|CONTEXT_FREED",
