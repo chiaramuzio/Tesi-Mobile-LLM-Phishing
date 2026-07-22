@@ -130,6 +130,41 @@ namespace {
     constexpr const char* FIRST_TOKEN_DECODE_FAILED =
             "ERROR|FIRST_TOKEN_DECODE_FAILED";
 
+    constexpr const char* GREEDY_SEQUENCE_PROMPT_NULL =
+            "ERROR|PROMPT_NULL";
+
+    constexpr const char* GREEDY_SEQUENCE_PROMPT_EMPTY =
+            "ERROR|PROMPT_EMPTY";
+
+    constexpr const char* GREEDY_SEQUENCE_INVALID_MAX_TOKENS =
+            "ERROR|INVALID_MAX_GENERATED_TOKENS";
+
+    constexpr const char* GREEDY_SEQUENCE_MODEL_NOT_LOADED =
+            "ERROR|MODEL_NOT_LOADED";
+
+    constexpr const char* GREEDY_SEQUENCE_CONTEXT_NOT_CREATED =
+            "ERROR|CONTEXT_NOT_CREATED";
+
+    constexpr const char* GREEDY_SEQUENCE_TOKENIZATION_FAILED =
+            "ERROR|TOKENIZATION_FAILED";
+
+    constexpr const char* GREEDY_SEQUENCE_CONTEXT_EXCEEDED =
+            "ERROR|CONTEXT_SIZE_EXCEEDED";
+
+    constexpr const char* GREEDY_SEQUENCE_PROMPT_DECODE_FAILED =
+            "ERROR|PROMPT_DECODE_FAILED";
+
+    constexpr const char* GREEDY_SEQUENCE_SAMPLER_FAILED =
+            "ERROR|SAMPLER_CREATION_FAILED";
+
+    constexpr const char* GREEDY_SEQUENCE_PIECE_FAILED =
+            "ERROR|TOKEN_PIECE_FAILED";
+
+    constexpr const char* GREEDY_SEQUENCE_TOKEN_DECODE_FAILED =
+            "ERROR|GENERATED_TOKEN_DECODE_FAILED";
+
+    constexpr int32_t MAX_GREEDY_PROBE_TOKENS = 8;
+
     llama_model* loadedModel = nullptr;
     llama_context* inferenceContext = nullptr;
     std::mutex modelMutex;
@@ -157,6 +192,68 @@ namespace {
 
         return stream.str();
     }
+
+    bool token_piece_to_hex(
+            const llama_vocab* vocabulary,
+            const llama_token token,
+            std::string& outputHex
+    ) {
+        std::vector<char> pieceBuffer(
+                256
+        );
+
+        int32_t pieceSize =
+                llama_token_to_piece(
+                        vocabulary,
+                        token,
+                        pieceBuffer.data(),
+                        static_cast<int32_t>(
+                                pieceBuffer.size()
+                        ),
+                        0,
+                        true
+                );
+
+        if (pieceSize < 0) {
+            const int32_t requiredPieceSize =
+                    -pieceSize;
+
+            if (requiredPieceSize <= 0) {
+                return false;
+            }
+
+            pieceBuffer.resize(
+                    static_cast<std::size_t>(
+                            requiredPieceSize
+                    )
+            );
+
+            pieceSize =
+                    llama_token_to_piece(
+                            vocabulary,
+                            token,
+                            pieceBuffer.data(),
+                            requiredPieceSize,
+                            0,
+                            true
+                    );
+        }
+
+        if (pieceSize < 0) {
+            return false;
+        }
+
+        outputHex =
+                bytes_to_hex(
+                        pieceBuffer.data(),
+                        static_cast<std::size_t>(
+                                pieceSize
+                        )
+                );
+
+        return true;
+    }
+
     jstring to_jstring(
             JNIEnv* environment,
             const char* value
@@ -203,7 +300,7 @@ namespace {
     ) {
         return to_jstring(
                 environment,
-                "phishingawareness-native-8-first-token"
+                "phishingawareness-native-9-greedy-sequence"
         );
     }
 
@@ -1226,6 +1323,375 @@ namespace {
                 result.c_str()
         );
     }
+
+    jstring native_generate_greedy_sequence(
+            JNIEnv* environment,
+            jobject /* instance */,
+            jstring prompt,
+            jboolean addSpecial,
+            jint maxGeneratedTokens
+    ) {
+        if (prompt == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_PROMPT_NULL
+            );
+        }
+
+        if (
+                maxGeneratedTokens <= 0 ||
+                maxGeneratedTokens > MAX_GREEDY_PROBE_TOKENS
+                ) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_INVALID_MAX_TOKENS
+            );
+        }
+
+        const char* promptChars =
+                environment->GetStringUTFChars(
+                        prompt,
+                        nullptr
+                );
+
+        if (promptChars == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        const std::string promptValue(
+                promptChars
+        );
+
+        environment->ReleaseStringUTFChars(
+                prompt,
+                promptChars
+        );
+
+        if (promptValue.empty()) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_PROMPT_EMPTY
+            );
+        }
+
+        std::lock_guard<std::mutex> lock(
+                modelMutex
+        );
+
+        if (loadedModel == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_MODEL_NOT_LOADED
+            );
+        }
+
+        if (inferenceContext == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_CONTEXT_NOT_CREATED
+            );
+        }
+
+        const llama_vocab* vocabulary =
+                llama_model_get_vocab(
+                        loadedModel
+                );
+
+        if (vocabulary == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        const bool shouldAddSpecial =
+                addSpecial == JNI_TRUE;
+
+        const int32_t tokenizationProbe =
+                llama_tokenize(
+                        vocabulary,
+                        promptValue.c_str(),
+                        static_cast<int32_t>(
+                                promptValue.size()
+                        ),
+                        nullptr,
+                        0,
+                        shouldAddSpecial,
+                        false
+                );
+
+        if (tokenizationProbe >= 0) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        const int32_t requiredPromptTokens =
+                -tokenizationProbe;
+
+        if (requiredPromptTokens <= 0) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        const uint32_t availableContextSize =
+                llama_n_ctx(
+                        inferenceContext
+                );
+
+        const uint64_t requiredContextSize =
+                static_cast<uint64_t>(
+                        requiredPromptTokens
+                ) +
+                static_cast<uint64_t>(
+                        maxGeneratedTokens
+                );
+
+        if (
+                requiredContextSize >
+                static_cast<uint64_t>(
+                        availableContextSize
+                )
+                ) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_CONTEXT_EXCEEDED
+            );
+        }
+
+        std::vector<llama_token> promptTokens(
+                static_cast<std::size_t>(
+                        requiredPromptTokens
+                )
+        );
+
+        const int32_t promptTokenCount =
+                llama_tokenize(
+                        vocabulary,
+                        promptValue.c_str(),
+                        static_cast<int32_t>(
+                                promptValue.size()
+                        ),
+                        promptTokens.data(),
+                        requiredPromptTokens,
+                        shouldAddSpecial,
+                        false
+                );
+
+        if (promptTokenCount <= 0) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        llama_memory_t contextMemory =
+                llama_get_memory(
+                        inferenceContext
+                );
+
+        if (contextMemory == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_PROMPT_DECODE_FAILED
+            );
+        }
+
+        llama_memory_clear(
+                contextMemory,
+                true
+        );
+
+        llama_batch promptBatch =
+                llama_batch_get_one(
+                        promptTokens.data(),
+                        promptTokenCount
+                );
+
+        const int32_t promptDecodeResult =
+                llama_decode(
+                        inferenceContext,
+                        promptBatch
+                );
+
+        if (promptDecodeResult != 0) {
+            llama_memory_clear(
+                    contextMemory,
+                    true
+            );
+
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_PROMPT_DECODE_FAILED
+            );
+        }
+
+        llama_sampler* greedySampler =
+                llama_sampler_init_greedy();
+
+        if (greedySampler == nullptr) {
+            llama_memory_clear(
+                    contextMemory,
+                    true
+            );
+
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_SAMPLER_FAILED
+            );
+        }
+
+        std::vector<llama_token> generatedTokens;
+        generatedTokens.reserve(
+                static_cast<std::size_t>(
+                        maxGeneratedTokens
+                )
+        );
+
+        std::string generatedHex;
+        bool reachedEndOfGeneration = false;
+
+        for (
+                int32_t generatedIndex = 0;
+                generatedIndex < maxGeneratedTokens;
+                ++generatedIndex
+                ) {
+            const llama_token sampledToken =
+                    llama_sampler_sample(
+                            greedySampler,
+                            inferenceContext,
+                            -1
+                    );
+
+            generatedTokens.push_back(
+                    sampledToken
+            );
+
+            std::string pieceHex;
+
+            if (
+                    !token_piece_to_hex(
+                            vocabulary,
+                            sampledToken,
+                            pieceHex
+                    )
+                    ) {
+                llama_sampler_free(
+                        greedySampler
+                );
+
+                llama_memory_clear(
+                        contextMemory,
+                        true
+                );
+
+                return to_jstring(
+                        environment,
+                        GREEDY_SEQUENCE_PIECE_FAILED
+                );
+            }
+
+            generatedHex += pieceHex;
+
+            if (
+                    llama_vocab_is_eog(
+                            vocabulary,
+                            sampledToken
+                    )
+                    ) {
+                reachedEndOfGeneration = true;
+                break;
+            }
+
+            llama_token tokenToDecode =
+                    sampledToken;
+
+            llama_batch generatedBatch =
+                    llama_batch_get_one(
+                            &tokenToDecode,
+                            1
+                    );
+
+            const int32_t generatedDecodeResult =
+                    llama_decode(
+                            inferenceContext,
+                            generatedBatch
+                    );
+
+            if (generatedDecodeResult != 0) {
+                llama_sampler_free(
+                        greedySampler
+                );
+
+                llama_memory_clear(
+                        contextMemory,
+                        true
+                );
+
+                return to_jstring(
+                        environment,
+                        GREEDY_SEQUENCE_TOKEN_DECODE_FAILED
+                );
+            }
+        }
+
+        llama_sampler_free(
+                greedySampler
+        );
+
+        llama_memory_clear(
+                contextMemory,
+                true
+        );
+
+        std::ostringstream tokenIdsStream;
+
+        for (
+                std::size_t index = 0;
+                index < generatedTokens.size();
+                ++index
+                ) {
+            if (index > 0) {
+                tokenIdsStream << ",";
+            }
+
+            tokenIdsStream << generatedTokens[index];
+        }
+
+        const std::string result =
+                "OK|GREEDY_SEQUENCE" +
+                std::string(
+                        "|REQUESTED_TOKEN_COUNT|"
+                ) +
+                std::to_string(
+                        maxGeneratedTokens
+                ) +
+                "|GENERATED_TOKEN_COUNT|" +
+                std::to_string(
+                        generatedTokens.size()
+                ) +
+                "|EOG|" +
+                (
+                        reachedEndOfGeneration
+                        ? "1"
+                        : "0"
+                ) +
+                "|TOKEN_IDS|" +
+                tokenIdsStream.str() +
+                "|OUTPUT_HEX|" +
+                generatedHex;
+
+        return environment->NewStringUTF(
+                result.c_str()
+        );
+    }
+
     JNINativeMethod NATIVE_METHODS[] = {
             {
                     const_cast<char*>("nativeVersion"),
@@ -1340,6 +1806,16 @@ namespace {
                         reinterpret_cast<void*>(
                                 native_generate_first_token_greedy
                         )
+            },
+
+            {
+                    const_cast<char*>("generateGreedySequence"),
+                    const_cast<char*>(
+                            "(Ljava/lang/String;ZI)Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_generate_greedy_sequence
+                    )
             }
     };
 

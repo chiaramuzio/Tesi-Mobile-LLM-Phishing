@@ -50,4 +50,10 @@ object NativeRuntimeBridge {
         prompt: String,
         addSpecial: Boolean
     ): String
+
+    external fun generateGreedySequence(
+        prompt: String,
+        addSpecial: Boolean,
+        maxGeneratedTokens: Int
+    ): String
 }

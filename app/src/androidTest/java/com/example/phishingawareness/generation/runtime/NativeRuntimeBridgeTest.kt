@@ -12,9 +12,9 @@ import java.io.File
 class NativeRuntimeBridgeTest {
 
     @Test
-    fun nativeVersion_firstTokenEnabled_returnsExpectedVersion() {
+    fun nativeVersion_greedySequenceEnabled_returnsExpectedVersion() {
         assertEquals(
-            "phishingawareness-native-8-first-token",
+            "phishingawareness-native-9-greedy-sequence",
             NativeRuntimeBridge.nativeVersion()
         )
     }
@@ -706,4 +706,194 @@ class NativeRuntimeBridgeTest {
         )
     }
 
+    @Test
+    fun nativeGreedySequence_realGemmaModel_generatesControlledSequence() {
+        val applicationContext =
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
+
+        val modelsDirectory =
+            requireNotNull(
+                applicationContext.getExternalFilesDir(
+                    "models"
+                )
+            )
+
+        val modelFile =
+            File(
+                modelsDirectory,
+                "gemma-3-4b-it-q4_0.gguf"
+            )
+
+        assertTrue(
+            "Modello GGUF non trovato: ${modelFile.absolutePath}",
+            modelFile.isFile
+        )
+
+        if (NativeRuntimeBridge.isContextReady()) {
+            assertEquals(
+                "OK|CONTEXT_FREED",
+                NativeRuntimeBridge.freeContext()
+            )
+        }
+
+        if (NativeRuntimeBridge.isModelLoaded()) {
+            assertEquals(
+                "OK|MODEL_UNLOADED",
+                NativeRuntimeBridge.unloadModel()
+            )
+        }
+
+        assertEquals(
+            "ERROR|INVALID_MAX_GENERATED_TOKENS",
+            NativeRuntimeBridge.generateGreedySequence(
+                prompt = "Ciao",
+                addSpecial = true,
+                maxGeneratedTokens = 0
+            )
+        )
+
+        assertEquals(
+            "ERROR|INVALID_MAX_GENERATED_TOKENS",
+            NativeRuntimeBridge.generateGreedySequence(
+                prompt = "Ciao",
+                addSpecial = true,
+                maxGeneratedTokens = 9
+            )
+        )
+
+        assertEquals(
+            "ERROR|MODEL_NOT_LOADED",
+            NativeRuntimeBridge.generateGreedySequence(
+                prompt = "Ciao",
+                addSpecial = true,
+                maxGeneratedTokens = 4
+            )
+        )
+
+        assertEquals(
+            "OK|MODEL_LOADED",
+            NativeRuntimeBridge.loadModel(
+                modelPath = modelFile.absolutePath
+            )
+        )
+
+        assertEquals(
+            "ERROR|CONTEXT_NOT_CREATED",
+            NativeRuntimeBridge.generateGreedySequence(
+                prompt = "Ciao",
+                addSpecial = true,
+                maxGeneratedTokens = 4
+            )
+        )
+
+        assertEquals(
+            "OK|CONTEXT_CREATED",
+            NativeRuntimeBridge.createContext(
+                contextSize = 2_048
+            )
+        )
+
+        assertEquals(
+            "ERROR|PROMPT_EMPTY",
+            NativeRuntimeBridge.generateGreedySequence(
+                prompt = "",
+                addSpecial = true,
+                maxGeneratedTokens = 4
+            )
+        )
+
+        val result =
+            NativeRuntimeBridge.generateGreedySequence(
+                prompt =
+                    "Rispondi in italiano con una frase molto breve: ciao.",
+                addSpecial = true,
+                maxGeneratedTokens = 4
+            )
+
+        assertTrue(
+            result,
+            result.startsWith(
+                "OK|GREEDY_SEQUENCE|"
+            )
+        )
+
+        assertTrue(
+            result,
+            result.contains(
+                "|REQUESTED_TOKEN_COUNT|4|"
+            )
+        )
+
+        val generatedTokenCount =
+            result
+                .substringAfter(
+                    "|GENERATED_TOKEN_COUNT|"
+                )
+                .substringBefore(
+                    "|EOG|"
+                )
+                .toInt()
+
+        val eogFlag =
+            result
+                .substringAfter(
+                    "|EOG|"
+                )
+                .substringBefore(
+                    "|TOKEN_IDS|"
+                )
+
+        val tokenIdsText =
+            result
+                .substringAfter(
+                    "|TOKEN_IDS|"
+                )
+                .substringBefore(
+                    "|OUTPUT_HEX|"
+                )
+
+        val outputHex =
+            result.substringAfter(
+                "|OUTPUT_HEX|"
+            )
+
+        assertTrue(
+            generatedTokenCount in 1..4
+        )
+
+        assertTrue(
+            eogFlag == "0" ||
+                    eogFlag == "1"
+        )
+
+        val tokenIds =
+            tokenIdsText
+                .split(",")
+                .map(String::toInt)
+
+        assertEquals(
+            generatedTokenCount,
+            tokenIds.size
+        )
+
+        assertTrue(
+            tokenIds.all { it >= 0 }
+        )
+
+        assertTrue(
+            outputHex.length % 2 == 0
+        )
+
+        assertEquals(
+            "OK|CONTEXT_FREED",
+            NativeRuntimeBridge.freeContext()
+        )
+
+        assertEquals(
+            "OK|MODEL_UNLOADED",
+            NativeRuntimeBridge.unloadModel()
+        )
+    }
 }
