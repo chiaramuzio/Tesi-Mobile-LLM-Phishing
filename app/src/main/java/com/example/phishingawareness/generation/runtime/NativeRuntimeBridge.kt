@@ -25,4 +25,14 @@ object NativeRuntimeBridge {
     external fun isModelLoaded(): Boolean
 
     external fun unloadModel(): String
+
+    external fun createContext(
+        contextSize: Int
+    ): String
+
+    external fun isContextReady(): Boolean
+
+    external fun contextSize(): Long
+
+    external fun freeContext(): String
 }

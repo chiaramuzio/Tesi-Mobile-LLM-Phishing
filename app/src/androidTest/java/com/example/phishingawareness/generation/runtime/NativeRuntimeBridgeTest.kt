@@ -12,9 +12,9 @@ import java.io.File
 class NativeRuntimeBridgeTest {
 
     @Test
-    fun nativeVersion_modelSessionEnabled_returnsExpectedVersion() {
+    fun nativeVersion_inferenceContextEnabled_returnsExpectedVersion() {
         assertEquals(
-            "phishingawareness-native-4-model-session",
+            "phishingawareness-native-5-inference-context",
             NativeRuntimeBridge.nativeVersion()
         )
     }
@@ -168,6 +168,120 @@ class NativeRuntimeBridgeTest {
 
         assertEquals(
             "ERROR|MODEL_NOT_LOADED",
+            NativeRuntimeBridge.unloadModel()
+        )
+    }
+
+    @Test
+    fun persistentInferenceContext_realGemmaModel_createsTracksAndFreesContext() {
+        val applicationContext =
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
+
+        val modelsDirectory =
+            requireNotNull(
+                applicationContext.getExternalFilesDir(
+                    "models"
+                )
+            )
+
+        val modelFile =
+            File(
+                modelsDirectory,
+                "gemma-3-4b-it-q4_0.gguf"
+            )
+
+        assertTrue(
+            "Modello GGUF non trovato: ${modelFile.absolutePath}",
+            modelFile.isFile
+        )
+
+        if (NativeRuntimeBridge.isContextReady()) {
+            assertEquals(
+                "OK|CONTEXT_FREED",
+                NativeRuntimeBridge.freeContext()
+            )
+        }
+
+        if (NativeRuntimeBridge.isModelLoaded()) {
+            assertEquals(
+                "OK|MODEL_UNLOADED",
+                NativeRuntimeBridge.unloadModel()
+            )
+        }
+
+        assertEquals(
+            "ERROR|MODEL_NOT_LOADED",
+            NativeRuntimeBridge.createContext(
+                contextSize = 2_048
+            )
+        )
+
+        assertEquals(
+            "OK|MODEL_LOADED",
+            NativeRuntimeBridge.loadModel(
+                modelPath = modelFile.absolutePath
+            )
+        )
+
+        assertEquals(
+            "ERROR|CONTEXT_SIZE_INVALID",
+            NativeRuntimeBridge.createContext(
+                contextSize = 0
+            )
+        )
+
+        assertEquals(
+            "OK|CONTEXT_CREATED",
+            NativeRuntimeBridge.createContext(
+                contextSize = 2_048
+            )
+        )
+
+        assertTrue(
+            NativeRuntimeBridge.isContextReady()
+        )
+
+        assertEquals(
+            2_048L,
+            NativeRuntimeBridge.contextSize()
+        )
+
+        assertEquals(
+            "ERROR|CONTEXT_ALREADY_CREATED",
+            NativeRuntimeBridge.createContext(
+                contextSize = 2_048
+            )
+        )
+
+        assertEquals(
+            "ERROR|CONTEXT_MUST_BE_FREED",
+            NativeRuntimeBridge.unloadModel()
+        )
+
+        assertEquals(
+            "OK|CONTEXT_FREED",
+            NativeRuntimeBridge.freeContext()
+        )
+
+        assertEquals(
+            false,
+            NativeRuntimeBridge.isContextReady()
+        )
+
+        assertEquals(
+            0L,
+            NativeRuntimeBridge.contextSize()
+        )
+
+        assertEquals(
+            "ERROR|CONTEXT_NOT_CREATED",
+            NativeRuntimeBridge.freeContext()
+        )
+
+        assertEquals(
+            "OK|MODEL_UNLOADED",
             NativeRuntimeBridge.unloadModel()
         )
     }
