@@ -40,4 +40,9 @@ object NativeRuntimeBridge {
         prompt: String,
         addSpecial: Boolean
     ): String
+
+    external fun decodePromptProbe(
+        prompt: String,
+        addSpecial: Boolean
+    ): String
 }

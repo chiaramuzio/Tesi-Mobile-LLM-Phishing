@@ -12,9 +12,9 @@ import java.io.File
 class NativeRuntimeBridgeTest {
 
     @Test
-    fun nativeVersion_tokenizationEnabled_returnsExpectedVersion() {
+    fun nativeVersion_promptDecodeEnabled_returnsExpectedVersion() {
         assertEquals(
-            "phishingawareness-native-6-tokenization",
+            "phishingawareness-native-7-prompt-decode",
             NativeRuntimeBridge.nativeVersion()
         )
     }
@@ -441,4 +441,132 @@ class NativeRuntimeBridgeTest {
             NativeRuntimeBridge.unloadModel()
         )
     }
+
+    @Test
+    fun nativePromptDecode_realGemmaModel_processesPromptAndClearsContext() {
+        val applicationContext =
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
+
+        val modelsDirectory =
+            requireNotNull(
+                applicationContext.getExternalFilesDir(
+                    "models"
+                )
+            )
+
+        val modelFile =
+            File(
+                modelsDirectory,
+                "gemma-3-4b-it-q4_0.gguf"
+            )
+
+        assertTrue(
+            "Modello GGUF non trovato: ${modelFile.absolutePath}",
+            modelFile.isFile
+        )
+
+        if (NativeRuntimeBridge.isContextReady()) {
+            assertEquals(
+                "OK|CONTEXT_FREED",
+                NativeRuntimeBridge.freeContext()
+            )
+        }
+
+        if (NativeRuntimeBridge.isModelLoaded()) {
+            assertEquals(
+                "OK|MODEL_UNLOADED",
+                NativeRuntimeBridge.unloadModel()
+            )
+        }
+
+        assertEquals(
+            "ERROR|MODEL_NOT_LOADED",
+            NativeRuntimeBridge.decodePromptProbe(
+                prompt = "Ciao",
+                addSpecial = true
+            )
+        )
+
+        assertEquals(
+            "OK|MODEL_LOADED",
+            NativeRuntimeBridge.loadModel(
+                modelPath = modelFile.absolutePath
+            )
+        )
+
+        assertEquals(
+            "ERROR|CONTEXT_NOT_CREATED",
+            NativeRuntimeBridge.decodePromptProbe(
+                prompt = "Ciao",
+                addSpecial = true
+            )
+        )
+
+        assertEquals(
+            "OK|CONTEXT_CREATED",
+            NativeRuntimeBridge.createContext(
+                contextSize = 2_048
+            )
+        )
+
+        assertEquals(
+            "ERROR|PROMPT_EMPTY",
+            NativeRuntimeBridge.decodePromptProbe(
+                prompt = "",
+                addSpecial = true
+            )
+        )
+
+        val result =
+            NativeRuntimeBridge.decodePromptProbe(
+                prompt =
+                    "Rispondi in italiano con una sola parola: ciao.",
+                addSpecial = true
+            )
+
+        assertTrue(
+            result.startsWith(
+                "OK|PROMPT_DECODED|TOKEN_COUNT|"
+            )
+        )
+
+        val tokenCount =
+            result
+                .substringAfterLast("|")
+                .toInt()
+
+        assertTrue(
+            tokenCount > 0
+        )
+
+        assertTrue(
+            tokenCount <= 2_048
+        )
+
+        val secondResult =
+            NativeRuntimeBridge.decodePromptProbe(
+                prompt =
+                    "Verifica controllata del secondo prompt.",
+                addSpecial = true
+            )
+
+        assertTrue(
+            secondResult.startsWith(
+                "OK|PROMPT_DECODED|TOKEN_COUNT|"
+            )
+        )
+
+        assertEquals(
+            "OK|CONTEXT_FREED",
+            NativeRuntimeBridge.freeContext()
+        )
+
+        assertEquals(
+            "OK|MODEL_UNLOADED",
+            NativeRuntimeBridge.unloadModel()
+        )
+    }
+
 }

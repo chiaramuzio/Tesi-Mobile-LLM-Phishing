@@ -77,6 +77,27 @@ namespace {
     constexpr const char* TOKENIZE_CONTEXT_EXCEEDED =
             "ERROR|CONTEXT_SIZE_EXCEEDED";
 
+    constexpr const char* DECODE_PROMPT_NULL =
+            "ERROR|PROMPT_NULL";
+
+    constexpr const char* DECODE_PROMPT_EMPTY =
+            "ERROR|PROMPT_EMPTY";
+
+    constexpr const char* DECODE_MODEL_NOT_LOADED =
+            "ERROR|MODEL_NOT_LOADED";
+
+    constexpr const char* DECODE_CONTEXT_NOT_CREATED =
+            "ERROR|CONTEXT_NOT_CREATED";
+
+    constexpr const char* DECODE_TOKENIZATION_FAILED =
+            "ERROR|TOKENIZATION_FAILED";
+
+    constexpr const char* DECODE_CONTEXT_EXCEEDED =
+            "ERROR|CONTEXT_SIZE_EXCEEDED";
+
+    constexpr const char* DECODE_FAILED =
+            "ERROR|PROMPT_DECODE_FAILED";
+
     llama_model* loadedModel = nullptr;
     llama_context* inferenceContext = nullptr;
     std::mutex modelMutex;
@@ -127,7 +148,7 @@ namespace {
     ) {
         return to_jstring(
                 environment,
-                "phishingawareness-native-6-tokenization"
+                "phishingawareness-native-7-prompt-decode"
         );
     }
 
@@ -605,6 +626,210 @@ namespace {
         );
     }
 
+    jstring native_decode_prompt_probe(
+            JNIEnv* environment,
+            jobject /* instance */,
+            jstring prompt,
+            jboolean addSpecial
+    ) {
+        if (prompt == nullptr) {
+            return to_jstring(
+                    environment,
+                    DECODE_PROMPT_NULL
+            );
+        }
+
+        const char* promptChars =
+                environment->GetStringUTFChars(
+                        prompt,
+                        nullptr
+                );
+
+        if (promptChars == nullptr) {
+            return to_jstring(
+                    environment,
+                    DECODE_TOKENIZATION_FAILED
+            );
+        }
+
+        const std::string promptValue(
+                promptChars
+        );
+
+        environment->ReleaseStringUTFChars(
+                prompt,
+                promptChars
+        );
+
+        if (promptValue.empty()) {
+            return to_jstring(
+                    environment,
+                    DECODE_PROMPT_EMPTY
+            );
+        }
+
+        std::lock_guard<std::mutex> lock(
+                modelMutex
+        );
+
+        if (loadedModel == nullptr) {
+            return to_jstring(
+                    environment,
+                    DECODE_MODEL_NOT_LOADED
+            );
+        }
+
+        if (inferenceContext == nullptr) {
+            return to_jstring(
+                    environment,
+                    DECODE_CONTEXT_NOT_CREATED
+            );
+        }
+
+        const llama_vocab* vocabulary =
+                llama_model_get_vocab(
+                        loadedModel
+                );
+
+        if (vocabulary == nullptr) {
+            return to_jstring(
+                    environment,
+                    DECODE_TOKENIZATION_FAILED
+            );
+        }
+
+        const bool shouldAddSpecial =
+                addSpecial == JNI_TRUE;
+
+        const int32_t tokenizationProbe =
+                llama_tokenize(
+                        vocabulary,
+                        promptValue.c_str(),
+                        static_cast<int32_t>(
+                                promptValue.size()
+                        ),
+                        nullptr,
+                        0,
+                        shouldAddSpecial,
+                        false
+                );
+
+        if (tokenizationProbe >= 0) {
+            return to_jstring(
+                    environment,
+                    DECODE_TOKENIZATION_FAILED
+            );
+        }
+
+        const int32_t requiredTokenCount =
+                -tokenizationProbe;
+
+        if (requiredTokenCount <= 0) {
+            return to_jstring(
+                    environment,
+                    DECODE_TOKENIZATION_FAILED
+            );
+        }
+
+        const uint32_t availableContextSize =
+                llama_n_ctx(
+                        inferenceContext
+                );
+
+        if (
+                static_cast<uint32_t>(
+                        requiredTokenCount
+                ) > availableContextSize
+                ) {
+            return to_jstring(
+                    environment,
+                    DECODE_CONTEXT_EXCEEDED
+            );
+        }
+
+        std::vector<llama_token> tokens(
+                static_cast<std::size_t>(
+                        requiredTokenCount
+                )
+        );
+
+        const int32_t tokenCount =
+                llama_tokenize(
+                        vocabulary,
+                        promptValue.c_str(),
+                        static_cast<int32_t>(
+                                promptValue.size()
+                        ),
+                        tokens.data(),
+                        requiredTokenCount,
+                        shouldAddSpecial,
+                        false
+                );
+
+        if (tokenCount <= 0) {
+            return to_jstring(
+                    environment,
+                    DECODE_TOKENIZATION_FAILED
+            );
+        }
+
+        llama_memory_t contextMemory =
+                llama_get_memory(
+                        inferenceContext
+                );
+
+        if (contextMemory == nullptr) {
+            return to_jstring(
+                    environment,
+                    DECODE_FAILED
+            );
+        }
+
+        llama_memory_clear(
+                contextMemory,
+                true
+        );
+
+        llama_batch batch =
+                llama_batch_get_one(
+                        tokens.data(),
+                        tokenCount
+                );
+
+        const int32_t decodeResult =
+                llama_decode(
+                        inferenceContext,
+                        batch
+                );
+
+        if (decodeResult != 0) {
+            llama_memory_clear(
+                    contextMemory,
+                    true
+            );
+
+            return to_jstring(
+                    environment,
+                    DECODE_FAILED
+            );
+        }
+
+        llama_memory_clear(
+                contextMemory,
+                true
+        );
+
+        const std::string result =
+                "OK|PROMPT_DECODED|TOKEN_COUNT|" +
+                std::to_string(
+                        tokenCount
+                );
+
+        return environment->NewStringUTF(
+                result.c_str()
+        );
+    }
+
     JNINativeMethod NATIVE_METHODS[] = {
             {
                     const_cast<char*>("nativeVersion"),
@@ -699,6 +924,16 @@ namespace {
                         reinterpret_cast<void*>(
                                 native_tokenize_prompt
                         )
+            },
+
+            {
+                    const_cast<char*>("decodePromptProbe"),
+                    const_cast<char*>(
+                            "(Ljava/lang/String;Z)Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_decode_prompt_probe
+                    )
             }
     };
 
