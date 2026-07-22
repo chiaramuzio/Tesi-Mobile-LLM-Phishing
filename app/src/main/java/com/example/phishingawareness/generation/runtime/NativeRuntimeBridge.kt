@@ -13,4 +13,8 @@ object NativeRuntimeBridge {
     external fun llamaSupportsMmap(): Boolean
 
     external fun llamaMaxDevices(): Long
+
+    external fun loadModelProbe(
+        modelPath: String
+    ): String
 }

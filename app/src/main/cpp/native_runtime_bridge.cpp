@@ -10,12 +10,34 @@ namespace {
             "com/example/phishingawareness/generation/runtime/"
             "NativeRuntimeBridge";
 
+    constexpr const char* MODEL_LOAD_SUCCESS =
+            "OK|MODEL_LOADED_AND_RELEASED";
+
+    constexpr const char* MODEL_PATH_NULL =
+            "ERROR|MODEL_PATH_NULL";
+
+    constexpr const char* MODEL_PATH_EMPTY =
+            "ERROR|MODEL_PATH_EMPTY";
+
+    constexpr const char* MODEL_LOAD_FAILED =
+            "ERROR|MODEL_LOAD_FAILED";
+
+    jstring to_jstring(
+            JNIEnv* environment,
+            const char* value
+    ) {
+        return environment->NewStringUTF(
+                value
+        );
+    }
+
     jstring native_version(
             JNIEnv* environment,
             jobject /* instance */
     ) {
-        return environment->NewStringUTF(
-                "phishingawareness-native-2-llama-b9947"
+        return to_jstring(
+                environment,
+                "phishingawareness-native-3-gguf-load"
         );
     }
 
@@ -37,6 +59,73 @@ namespace {
         );
     }
 
+    jstring native_load_model_probe(
+            JNIEnv* environment,
+            jobject /* instance */,
+            jstring modelPath
+    ) {
+        if (modelPath == nullptr) {
+            return to_jstring(
+                    environment,
+                    MODEL_PATH_NULL
+            );
+        }
+
+        const char* modelPathChars =
+                environment->GetStringUTFChars(
+                        modelPath,
+                        nullptr
+                );
+
+        if (modelPathChars == nullptr) {
+            return to_jstring(
+                    environment,
+                    MODEL_LOAD_FAILED
+            );
+        }
+
+        const std::string modelPathValue(
+                modelPathChars
+        );
+
+        environment->ReleaseStringUTFChars(
+                modelPath,
+                modelPathChars
+        );
+
+        if (modelPathValue.empty()) {
+            return to_jstring(
+                    environment,
+                    MODEL_PATH_EMPTY
+            );
+        }
+
+        llama_model_params modelParams =
+                llama_model_default_params();
+
+        llama_model* model =
+                llama_model_load_from_file(
+                        modelPathValue.c_str(),
+                        modelParams
+                );
+
+        if (model == nullptr) {
+            return to_jstring(
+                    environment,
+                    MODEL_LOAD_FAILED
+            );
+        }
+
+        llama_model_free(
+                model
+        );
+
+        return to_jstring(
+                environment,
+                MODEL_LOAD_SUCCESS
+        );
+    }
+
     JNINativeMethod NATIVE_METHODS[] = {
             {
                     const_cast<char*>("nativeVersion"),
@@ -52,6 +141,15 @@ namespace {
                     const_cast<char*>("llamaMaxDevices"),
                     const_cast<char*>("()J"),
                     reinterpret_cast<void*>(native_llama_max_devices)
+            },
+            {
+                    const_cast<char*>("loadModelProbe"),
+                    const_cast<char*>(
+                            "(Ljava/lang/String;)Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_load_model_probe
+                    )
             }
     };
 
@@ -78,12 +176,15 @@ JNI_OnLoad(
         return JNI_ERR;
     }
 
+    llama_backend_init();
+
     jclass bridgeClass =
             environment->FindClass(
                     BRIDGE_CLASS_NAME
             );
 
     if (bridgeClass == nullptr) {
+        llama_backend_free();
         return JNI_ERR;
     }
 
@@ -102,8 +203,18 @@ JNI_OnLoad(
     );
 
     if (registrationResult != JNI_OK) {
+        llama_backend_free();
         return JNI_ERR;
     }
 
     return JNI_VERSION_1_6;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+JNI_OnUnload(
+        JavaVM* /* javaVirtualMachine */,
+        void* /* reserved */
+) {
+    llama_backend_free();
 }
