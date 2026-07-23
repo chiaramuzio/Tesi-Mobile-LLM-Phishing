@@ -14,7 +14,7 @@ class NativeRuntimeBridgeTest {
     @Test
     fun nativeVersion_samplingContractEnabled_returnsExpectedVersion() {
         assertEquals(
-            "phishingawareness-native-10-sampling-contract",
+            "phishingawareness-native-12-configured-sequence",
             NativeRuntimeBridge.nativeVersion()
         )
     }
@@ -1024,6 +1024,150 @@ class NativeRuntimeBridgeTest {
             NativeRuntimeBridge.unloadModel()
         )
     }
+
+    @Test
+    fun configuredSequence_realGemmaModel_generatesConfiguredToken() {
+        val applicationContext =
+            InstrumentationRegistry
+                .getInstrumentation()
+                .targetContext
+
+        val modelsDirectory =
+            requireNotNull(
+                applicationContext.getExternalFilesDir(
+                    "models"
+                )
+            )
+
+        val modelFile =
+            File(
+                modelsDirectory,
+                "gemma-3-4b-it-q4_0.gguf"
+            )
+
+        assertTrue(
+            "Modello GGUF non trovato: ${modelFile.absolutePath}",
+            modelFile.isFile
+        )
+
+        assertEquals(
+            3_155_051_328L,
+            modelFile.length()
+        )
+
+        if (NativeRuntimeBridge.isContextReady()) {
+            assertEquals(
+                "OK|CONTEXT_FREED",
+                NativeRuntimeBridge.freeContext()
+            )
+        }
+
+        if (NativeRuntimeBridge.isModelLoaded()) {
+            assertEquals(
+                "OK|MODEL_UNLOADED",
+                NativeRuntimeBridge.unloadModel()
+            )
+        }
+
+        try {
+            assertEquals(
+                "OK|MODEL_LOADED",
+                NativeRuntimeBridge.loadModel(
+                    modelPath = modelFile.absolutePath
+                )
+            )
+
+            assertEquals(
+                "OK|CONTEXT_CREATED",
+                NativeRuntimeBridge.createContext(
+                    contextSize = 2_048
+                )
+            )
+
+            val firstResult =
+                NativeRuntimeBridge.generateConfiguredSequence(
+                    prompt =
+                        "Rispondi in italiano con una frase molto breve: ciao.",
+                    addSpecial = true,
+                    maxGeneratedTokens = 1,
+                    temperature = 0.4f,
+                    topK = 40,
+                    topP = 0.90f,
+                    minP = 0.05f,
+                    repeatPenalty = 1.05f,
+                    seed = 101
+                )
+
+            /*val secondResult =
+                NativeRuntimeBridge.generateConfiguredSequence(
+                    prompt =
+                        "Rispondi in italiano con una frase molto breve: ciao.",
+                    addSpecial = true,
+                    maxGeneratedTokens = 8,
+                    temperature = 0.4f,
+                    topK = 40,
+                    topP = 0.90f,
+                    minP = 0.05f,
+                    repeatPenalty = 1.05f,
+                    seed = 101
+                )*/
+
+            assertTrue(
+                firstResult,
+                firstResult.startsWith(
+                    "OK|GREEDY_SEQUENCE|"
+                )
+            )
+
+            assertTrue(
+                firstResult,
+                firstResult.contains(
+                    "|REQUESTED_TOKEN_COUNT|1|"
+                )
+            )
+
+            assertTrue(
+                firstResult,
+                firstResult.contains(
+                    "|GENERATED_TOKEN_COUNT|"
+                )
+            )
+
+            assertTrue(
+                firstResult,
+                firstResult.contains(
+                    "|TOKEN_IDS|"
+                )
+            )
+
+            assertTrue(
+                firstResult,
+                firstResult.contains(
+                    "|OUTPUT_HEX|"
+                )
+            )
+
+            /*assertEquals(
+                firstResult,
+                secondResult
+            )*/
+        } finally {
+            if (NativeRuntimeBridge.isContextReady()) {
+                assertEquals(
+                    "OK|CONTEXT_FREED",
+                    NativeRuntimeBridge.freeContext()
+                )
+            }
+
+            if (NativeRuntimeBridge.isModelLoaded()) {
+                assertEquals(
+                    "OK|MODEL_UNLOADED",
+                    NativeRuntimeBridge.unloadModel()
+                )
+            }
+        }
+    }
+
     @Test
     fun nativeVersion_samplingContract_validatesAndReceivesAllParameters() {
         assertEquals(
@@ -1168,6 +1312,38 @@ class NativeRuntimeBridgeTest {
             result,
             result.endsWith(
                 "|SEED|101"
+            )
+        )
+    }
+
+    @Test
+    fun samplingChain_approvedConfiguration_createsAndReleasesChain() {
+        assertEquals(
+            "OK|SAMPLING_CHAIN_CREATED_AND_RELEASED",
+            NativeRuntimeBridge.probeSamplingChain(
+                maxGeneratedTokens = 1_200,
+                temperature = 0.4f,
+                topK = 40,
+                topP = 0.90f,
+                minP = 0.05f,
+                repeatPenalty = 1.05f,
+                seed = 101
+            )
+        )
+    }
+
+    @Test
+    fun samplingChain_invalidConfiguration_returnsControlledFailure() {
+        assertEquals(
+            "ERROR|INVALID_TOP_K",
+            NativeRuntimeBridge.probeSamplingChain(
+                maxGeneratedTokens = 1_200,
+                temperature = 0.4f,
+                topK = 0,
+                topP = 0.90f,
+                minP = 0.05f,
+                repeatPenalty = 1.05f,
+                seed = 101
             )
         )
     }

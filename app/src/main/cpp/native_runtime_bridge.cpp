@@ -1,4 +1,4 @@
-#include <jni.h>
+﻿#include <jni.h>
 
 #include <iomanip>
 #include <mutex>
@@ -184,6 +184,16 @@ namespace {
     constexpr const char* SAMPLING_INVALID_REPEAT_PENALTY =
             "ERROR|INVALID_REPEAT_PENALTY";
 
+    constexpr const char* SAMPLING_CHAIN_CREATE_SUCCESS =
+            "OK|SAMPLING_CHAIN_CREATED_AND_RELEASED";
+
+    constexpr const char* SAMPLING_CHAIN_CREATE_FAILED =
+            "ERROR|SAMPLING_CHAIN_CREATION_FAILED";
+
+    constexpr int32_t SAMPLING_PENALTY_LAST_N = 64;
+
+    constexpr std::size_t SAMPLING_MIN_KEEP = 1;
+
     llama_model* loadedModel = nullptr;
     llama_context* inferenceContext = nullptr;
     std::mutex modelMutex;
@@ -282,6 +292,137 @@ namespace {
         );
     }
 
+    llama_sampler* create_sampling_chain(
+            const float temperature,
+            const int32_t topK,
+            const float topP,
+            const float minP,
+            const float repeatPenalty,
+            const int32_t seed
+    ) {
+        llama_sampler_chain_params chainParams =
+                llama_sampler_chain_default_params();
+
+        chainParams.no_perf = true;
+
+        llama_sampler* chain =
+                llama_sampler_chain_init(
+                        chainParams
+                );
+
+        if (chain == nullptr) {
+            return nullptr;
+        }
+
+        llama_sampler* topKSampler =
+                llama_sampler_init_top_k(
+                        topK
+                );
+
+        llama_sampler* topPSampler =
+                llama_sampler_init_top_p(
+                        topP,
+                        SAMPLING_MIN_KEEP
+                );
+
+        llama_sampler* minPSampler =
+                llama_sampler_init_min_p(
+                        minP,
+                        SAMPLING_MIN_KEEP
+                );
+
+        llama_sampler* penaltiesSampler =
+                llama_sampler_init_penalties(
+                        SAMPLING_PENALTY_LAST_N,
+                        repeatPenalty,
+                        0.0F,
+                        0.0F
+                );
+
+        llama_sampler* temperatureSampler =
+                llama_sampler_init_temp(
+                        temperature
+                );
+
+        llama_sampler* distributionSampler =
+                llama_sampler_init_dist(
+                        static_cast<uint32_t>(
+                                seed
+                        )
+                );
+
+        if (
+                topKSampler == nullptr ||
+                topPSampler == nullptr ||
+                minPSampler == nullptr ||
+                penaltiesSampler == nullptr ||
+                temperatureSampler == nullptr ||
+                distributionSampler == nullptr
+                ) {
+            if (topKSampler != nullptr) {
+                llama_sampler_free(topKSampler);
+            }
+
+            if (topPSampler != nullptr) {
+                llama_sampler_free(topPSampler);
+            }
+
+            if (minPSampler != nullptr) {
+                llama_sampler_free(minPSampler);
+            }
+
+            if (penaltiesSampler != nullptr) {
+                llama_sampler_free(penaltiesSampler);
+            }
+
+            if (temperatureSampler != nullptr) {
+                llama_sampler_free(temperatureSampler);
+            }
+
+            if (distributionSampler != nullptr) {
+                llama_sampler_free(distributionSampler);
+            }
+
+            llama_sampler_free(
+                    chain
+            );
+
+            return nullptr;
+        }
+
+        llama_sampler_chain_add(
+                chain,
+                topKSampler
+        );
+
+        llama_sampler_chain_add(
+                chain,
+                topPSampler
+        );
+
+        llama_sampler_chain_add(
+                chain,
+                minPSampler
+        );
+
+        llama_sampler_chain_add(
+                chain,
+                penaltiesSampler
+        );
+
+        llama_sampler_chain_add(
+                chain,
+                temperatureSampler
+        );
+
+        llama_sampler_chain_add(
+                chain,
+                distributionSampler
+        );
+
+        return chain;
+    }
+
     bool read_model_path(
             JNIEnv* environment,
             jstring modelPath,
@@ -319,7 +460,7 @@ namespace {
     ) {
         return to_jstring(
                 environment,
-                "phishingawareness-native-10-sampling-contract"
+                "phishingawareness-native-12-configured-sequence"
         );
     }
 
@@ -1711,6 +1852,444 @@ namespace {
         );
     }
 
+    jstring native_generate_configured_sequence(
+            JNIEnv* environment,
+            jobject /* instance */,
+            jstring prompt,
+            jboolean addSpecial,
+            jint maxGeneratedTokens,
+            jfloat temperature,
+            jint topK,
+            jfloat topP,
+            jfloat minP,
+            jfloat repeatPenalty,
+            jint seed
+    ) {
+        if (prompt == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_PROMPT_NULL
+            );
+        }
+
+        if (
+                maxGeneratedTokens <= 0 ||
+                maxGeneratedTokens > MAX_GREEDY_PROBE_TOKENS
+                ) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_INVALID_MAX_TOKENS
+            );
+        }
+
+        if (
+                !std::isfinite(temperature) ||
+                temperature <= 0.0F
+                ) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_TEMPERATURE
+            );
+        }
+
+        if (topK <= 0) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_TOP_K
+            );
+        }
+
+        if (
+                !std::isfinite(topP) ||
+                topP <= 0.0F ||
+                topP > 1.0F
+                ) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_TOP_P
+            );
+        }
+
+        if (
+                !std::isfinite(minP) ||
+                minP < 0.0F ||
+                minP > 1.0F
+                ) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_MIN_P
+            );
+        }
+
+        if (
+                !std::isfinite(repeatPenalty) ||
+                repeatPenalty <= 0.0F
+                ) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_REPEAT_PENALTY
+            );
+        }
+
+        const char* promptChars =
+                environment->GetStringUTFChars(
+                        prompt,
+                        nullptr
+                );
+
+        if (promptChars == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        const std::string promptValue(
+                promptChars
+        );
+
+        environment->ReleaseStringUTFChars(
+                prompt,
+                promptChars
+        );
+
+        if (promptValue.empty()) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_PROMPT_EMPTY
+            );
+        }
+
+        std::lock_guard<std::mutex> lock(
+                modelMutex
+        );
+
+        if (loadedModel == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_MODEL_NOT_LOADED
+            );
+        }
+
+        if (inferenceContext == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_CONTEXT_NOT_CREATED
+            );
+        }
+
+        const llama_vocab* vocabulary =
+                llama_model_get_vocab(
+                        loadedModel
+                );
+
+        if (vocabulary == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        const bool shouldAddSpecial =
+                addSpecial == JNI_TRUE;
+
+        const int32_t tokenizationProbe =
+                llama_tokenize(
+                        vocabulary,
+                        promptValue.c_str(),
+                        static_cast<int32_t>(
+                                promptValue.size()
+                        ),
+                        nullptr,
+                        0,
+                        shouldAddSpecial,
+                        false
+                );
+
+        if (tokenizationProbe >= 0) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        const int32_t requiredPromptTokens =
+                -tokenizationProbe;
+
+        if (requiredPromptTokens <= 0) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        const uint32_t availableContextSize =
+                llama_n_ctx(
+                        inferenceContext
+                );
+
+        const uint64_t requiredContextSize =
+                static_cast<uint64_t>(
+                        requiredPromptTokens
+                ) +
+                static_cast<uint64_t>(
+                        maxGeneratedTokens
+                );
+
+        if (
+                requiredContextSize >
+                static_cast<uint64_t>(
+                        availableContextSize
+                )
+                ) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_CONTEXT_EXCEEDED
+            );
+        }
+
+        std::vector<llama_token> promptTokens(
+                static_cast<std::size_t>(
+                        requiredPromptTokens
+                )
+        );
+
+        const int32_t promptTokenCount =
+                llama_tokenize(
+                        vocabulary,
+                        promptValue.c_str(),
+                        static_cast<int32_t>(
+                                promptValue.size()
+                        ),
+                        promptTokens.data(),
+                        requiredPromptTokens,
+                        shouldAddSpecial,
+                        false
+                );
+
+        if (promptTokenCount <= 0) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        llama_memory_t contextMemory =
+                llama_get_memory(
+                        inferenceContext
+                );
+
+        if (contextMemory == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_PROMPT_DECODE_FAILED
+            );
+        }
+
+        llama_memory_clear(
+                contextMemory,
+                true
+        );
+
+        llama_batch promptBatch =
+                llama_batch_get_one(
+                        promptTokens.data(),
+                        promptTokenCount
+                );
+
+        const int32_t promptDecodeResult =
+                llama_decode(
+                        inferenceContext,
+                        promptBatch
+                );
+
+        if (promptDecodeResult != 0) {
+            llama_memory_clear(
+                    contextMemory,
+                    true
+            );
+
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_PROMPT_DECODE_FAILED
+            );
+        }
+
+        llama_sampler* samplingChain =
+                create_sampling_chain(
+                        temperature,
+                        topK,
+                        topP,
+                        minP,
+                        repeatPenalty,
+                        seed
+                );
+
+        if (samplingChain == nullptr) {
+            llama_memory_clear(
+                    contextMemory,
+                    true
+            );
+
+            return to_jstring(
+                    environment,
+                    SAMPLING_CHAIN_CREATE_FAILED
+            );
+        }
+
+        /*
+         * Registra nella memoria del repeat penalty anche i token
+         * del prompt. I token generati vengono invece accettati
+         * automaticamente da llama_sampler_sample().
+         */
+
+
+        std::vector<llama_token> generatedTokens;
+
+        generatedTokens.reserve(
+                static_cast<std::size_t>(
+                        maxGeneratedTokens
+                )
+        );
+
+        std::string generatedHex;
+        bool reachedEndOfGeneration = false;
+
+        for (
+                int32_t generatedIndex = 0;
+                generatedIndex < maxGeneratedTokens;
+                ++generatedIndex
+                ) {
+            const llama_token sampledToken =
+                    llama_sampler_sample(
+                            samplingChain,
+                            inferenceContext,
+                            -1
+                    );
+
+            generatedTokens.push_back(
+                    sampledToken
+            );
+
+            std::string pieceHex;
+
+            if (
+                    !token_piece_to_hex(
+                            vocabulary,
+                            sampledToken,
+                            pieceHex
+                    )
+                    ) {
+                llama_sampler_free(
+                        samplingChain
+                );
+
+                llama_memory_clear(
+                        contextMemory,
+                        true
+                );
+
+                return to_jstring(
+                        environment,
+                        GREEDY_SEQUENCE_PIECE_FAILED
+                );
+            }
+
+            generatedHex += pieceHex;
+
+            if (
+                    llama_vocab_is_eog(
+                            vocabulary,
+                            sampledToken
+                    )
+                    ) {
+                reachedEndOfGeneration = true;
+                break;
+            }
+
+            llama_token tokenToDecode =
+                    sampledToken;
+
+            llama_batch generatedBatch =
+                    llama_batch_get_one(
+                            &tokenToDecode,
+                            1
+                    );
+
+            const int32_t generatedDecodeResult =
+                    llama_decode(
+                            inferenceContext,
+                            generatedBatch
+                    );
+
+            if (generatedDecodeResult != 0) {
+                llama_sampler_free(
+                        samplingChain
+                );
+
+                llama_memory_clear(
+                        contextMemory,
+                        true
+                );
+
+                return to_jstring(
+                        environment,
+                        GREEDY_SEQUENCE_TOKEN_DECODE_FAILED
+                );
+            }
+        }
+
+        llama_sampler_free(
+                samplingChain
+        );
+
+        llama_memory_clear(
+                contextMemory,
+                true
+        );
+
+        std::ostringstream tokenIdsStream;
+
+        for (
+                std::size_t index = 0;
+                index < generatedTokens.size();
+                ++index
+                ) {
+            if (index > 0) {
+                tokenIdsStream << ",";
+            }
+
+            tokenIdsStream << generatedTokens[index];
+        }
+
+        const std::string result =
+                "OK|GREEDY_SEQUENCE" +
+                std::string(
+                        "|REQUESTED_TOKEN_COUNT|"
+                ) +
+                std::to_string(
+                        maxGeneratedTokens
+                ) +
+                "|GENERATED_TOKEN_COUNT|" +
+                std::to_string(
+                        generatedTokens.size()
+                ) +
+                "|EOG|" +
+                (
+                        reachedEndOfGeneration
+                        ? "1"
+                        : "0"
+                ) +
+                "|TOKEN_IDS|" +
+                tokenIdsStream.str() +
+                "|OUTPUT_HEX|" +
+                generatedHex;
+
+        return environment->NewStringUTF(
+                result.c_str()
+        );
+    }
+
     jstring native_validate_sampling_configuration(
             JNIEnv* environment,
             jobject /* instance */,
@@ -1803,6 +2382,100 @@ namespace {
         return to_jstring(
                 environment,
                 resultValue.c_str()
+        );
+    }
+
+    jstring native_probe_sampling_chain(
+            JNIEnv* environment,
+            jobject /* instance */,
+            jint maxGeneratedTokens,
+            jfloat temperature,
+            jint topK,
+            jfloat topP,
+            jfloat minP,
+            jfloat repeatPenalty,
+            jint seed
+    ) {
+        if (maxGeneratedTokens <= 0) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_MAX_TOKENS
+            );
+        }
+
+        if (
+                !std::isfinite(temperature) ||
+                temperature <= 0.0F
+                ) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_TEMPERATURE
+            );
+        }
+
+        if (topK <= 0) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_TOP_K
+            );
+        }
+
+        if (
+                !std::isfinite(topP) ||
+                topP <= 0.0F ||
+                topP > 1.0F
+                ) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_TOP_P
+            );
+        }
+
+        if (
+                !std::isfinite(minP) ||
+                minP < 0.0F ||
+                minP > 1.0F
+                ) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_MIN_P
+            );
+        }
+
+        if (
+                !std::isfinite(repeatPenalty) ||
+                repeatPenalty <= 0.0F
+                ) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_INVALID_REPEAT_PENALTY
+            );
+        }
+
+        llama_sampler* samplingChain =
+                create_sampling_chain(
+                        temperature,
+                        topK,
+                        topP,
+                        minP,
+                        repeatPenalty,
+                        seed
+                );
+
+        if (samplingChain == nullptr) {
+            return to_jstring(
+                    environment,
+                    SAMPLING_CHAIN_CREATE_FAILED
+            );
+        }
+
+        llama_sampler_free(
+                samplingChain
+        );
+
+        return to_jstring(
+                environment,
+                SAMPLING_CHAIN_CREATE_SUCCESS
         );
     }
 
@@ -1930,6 +2603,19 @@ namespace {
                             native_generate_greedy_sequence
                     )
             },
+
+            {
+                    const_cast<char*>(
+                            "generateConfiguredSequence"
+                    ),
+                    const_cast<char*>(
+                            "(Ljava/lang/String;ZIFIFFFI)Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_generate_configured_sequence
+                    )
+            },
+
             {
                     const_cast<char*>(
                             "validateSamplingConfiguration"
@@ -1940,7 +2626,20 @@ namespace {
                     reinterpret_cast<void*>(
                             native_validate_sampling_configuration
                     )
+            },
+
+            {
+                const_cast<char*>(
+                        "probeSamplingChain"
+                ),
+                        const_cast<char*>(
+                                "(IFIFFFI)Ljava/lang/String;"
+                        ),
+                        reinterpret_cast<void*>(
+                                native_probe_sampling_chain
+                        )
             }
+
     };
 
 } // namespace

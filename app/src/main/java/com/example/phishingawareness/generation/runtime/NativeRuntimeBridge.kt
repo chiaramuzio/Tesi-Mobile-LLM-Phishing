@@ -57,7 +57,29 @@ object NativeRuntimeBridge {
         maxGeneratedTokens: Int
     ): String
 
+    external fun generateConfiguredSequence(
+        prompt: String,
+        addSpecial: Boolean,
+        maxGeneratedTokens: Int,
+        temperature: Float,
+        topK: Int,
+        topP: Float,
+        minP: Float,
+        repeatPenalty: Float,
+        seed: Int
+    ): String
+
     external fun validateSamplingConfiguration(
+        maxGeneratedTokens: Int,
+        temperature: Float,
+        topK: Int,
+        topP: Float,
+        minP: Float,
+        repeatPenalty: Float,
+        seed: Int
+    ): String
+
+    external fun probeSamplingChain(
         maxGeneratedTokens: Int,
         temperature: Float,
         topK: Int,
