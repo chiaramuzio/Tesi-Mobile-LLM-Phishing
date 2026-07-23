@@ -1026,7 +1026,7 @@ class NativeRuntimeBridgeTest {
     }
 
     @Test
-    fun configuredSequence_realGemmaModel_generatesConfiguredToken() {
+    fun configuredSequence_realGemmaModel_sameSeedProducesSameSequence() {
         val applicationContext =
             InstrumentationRegistry
                 .getInstrumentation()
@@ -1098,19 +1098,19 @@ class NativeRuntimeBridgeTest {
                     seed = 101
                 )
 
-            /*val secondResult =
+            val secondResult =
                 NativeRuntimeBridge.generateConfiguredSequence(
                     prompt =
                         "Rispondi in italiano con una frase molto breve: ciao.",
                     addSpecial = true,
-                    maxGeneratedTokens = 8,
+                    maxGeneratedTokens = 1,
                     temperature = 0.4f,
                     topK = 40,
                     topP = 0.90f,
                     minP = 0.05f,
                     repeatPenalty = 1.05f,
                     seed = 101
-                )*/
+                )
 
             assertTrue(
                 firstResult,
@@ -1147,10 +1147,10 @@ class NativeRuntimeBridgeTest {
                 )
             )
 
-            /*assertEquals(
+            assertEquals(
                 firstResult,
                 secondResult
-            )*/
+            )
         } finally {
             if (NativeRuntimeBridge.isContextReady()) {
                 assertEquals(
