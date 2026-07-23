@@ -69,6 +69,41 @@ object NativeRuntimeBridge {
         seed: Int
     ): String
 
+    /**
+     * Esegue una generazione configurabile e converte il protocollo JNI
+     * nel risultato Kotlin tipizzato.
+     *
+     * Il metodo generateConfiguredSequence() resta disponibile per
+     * diagnostica, logging e riproducibilità del protocollo originale.
+     */
+    fun generateConfiguredSequenceResult(
+        prompt: String,
+        addSpecial: Boolean,
+        maxGeneratedTokens: Int,
+        temperature: Float,
+        topK: Int,
+        topP: Float,
+        minP: Float,
+        repeatPenalty: Float,
+        seed: Int
+    ): NativeGeneratedSequence {
+        val nativeProtocol =
+            generateConfiguredSequence(
+                prompt = prompt,
+                addSpecial = addSpecial,
+                maxGeneratedTokens = maxGeneratedTokens,
+                temperature = temperature,
+                topK = topK,
+                topP = topP,
+                minP = minP,
+                repeatPenalty = repeatPenalty,
+                seed = seed
+            )
+
+        return NativeGeneratedSequenceParser.parse(
+            protocol = nativeProtocol
+        )
+    }
     external fun validateSamplingConfiguration(
         maxGeneratedTokens: Int,
         temperature: Float,
