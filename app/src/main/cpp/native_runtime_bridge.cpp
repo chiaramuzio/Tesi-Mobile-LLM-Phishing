@@ -9,6 +9,7 @@
 #include <android/log.h>
 #include <chrono>
 #include <cstdint>
+#include <algorithm>
 
 #include "llama.h"
 
@@ -203,6 +204,9 @@ namespace {
 
     constexpr const char* SYSTEM_INFO_UNAVAILABLE =
             "ERROR|SYSTEM_INFO_UNAVAILABLE";
+
+    constexpr const char* CHAT_PROMPT_INSPECTION_FAILED =
+            "ERROR|CHAT_PROMPT_INSPECTION_FAILED";
 
     constexpr int32_t SAMPLING_PENALTY_LAST_N = 64;
 
@@ -620,6 +624,74 @@ namespace {
                         writtenSize
                 )
         );
+
+        return true;
+    }
+
+    bool decode_prompt_tokens_in_batches(
+            llama_context* context,
+            std::vector<llama_token>& tokens,
+            int32_t tokenCount,
+            int32_t& decodedBatchCount
+    ) {
+        decodedBatchCount = 0;
+
+        if (
+                context == nullptr ||
+                tokenCount <= 0 ||
+                tokenCount >
+                static_cast<int32_t>(
+                        tokens.size()
+                )
+                ) {
+            return false;
+        }
+
+        const uint32_t configuredBatchSize =
+                llama_n_batch(
+                        context
+                );
+
+        if (configuredBatchSize == 0) {
+            return false;
+        }
+
+        int32_t tokenOffset = 0;
+
+        while (tokenOffset < tokenCount) {
+            const int32_t remainingTokenCount =
+                    tokenCount - tokenOffset;
+
+            const int32_t currentBatchTokenCount =
+                    std::min(
+                            remainingTokenCount,
+                            static_cast<int32_t>(
+                                    configuredBatchSize
+                            )
+                    );
+
+            llama_batch promptBatch =
+                    llama_batch_get_one(
+                            tokens.data() +
+                            tokenOffset,
+                            currentBatchTokenCount
+                    );
+
+            const int32_t decodeResult =
+                    llama_decode(
+                            context,
+                            promptBatch
+                    );
+
+            if (decodeResult != 0) {
+                return false;
+            }
+
+            tokenOffset +=
+                    currentBatchTokenCount;
+
+            ++decodedBatchCount;
+        }
 
         return true;
     }
@@ -1741,6 +1813,286 @@ namespace {
         );
     }
 
+    jstring native_inspect_chat_prompt(
+            JNIEnv* environment,
+            jobject /* instance */,
+            jstring prompt,
+            jboolean addSpecial
+    ) {
+        if (prompt == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_PROMPT_NULL
+            );
+        }
+
+        const char* promptChars =
+                environment->GetStringUTFChars(
+                        prompt,
+                        nullptr
+                );
+
+        if (promptChars == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        const std::string promptValue(
+                promptChars
+        );
+
+        environment->ReleaseStringUTFChars(
+                prompt,
+                promptChars
+        );
+
+        if (promptValue.empty()) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_PROMPT_EMPTY
+            );
+        }
+
+        std::lock_guard<std::mutex> lock(
+                modelMutex
+        );
+
+        if (loadedModel == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_MODEL_NOT_LOADED
+            );
+        }
+
+        if (inferenceContext == nullptr) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_CONTEXT_NOT_CREATED
+            );
+        }
+
+        const llama_vocab* vocabulary =
+                llama_model_get_vocab(
+                        loadedModel
+                );
+
+        if (vocabulary == nullptr) {
+            return to_jstring(
+                    environment,
+                    CHAT_PROMPT_INSPECTION_FAILED
+            );
+        }
+
+        const NativeTimePoint totalStartedAt =
+                NativeSteadyClock::now();
+
+        const NativeTimePoint templateStartedAt =
+                NativeSteadyClock::now();
+
+        std::string formattedPromptValue;
+
+        if (
+                !apply_user_chat_template(
+                        loadedModel,
+                        promptValue,
+                        formattedPromptValue
+                )
+                ) {
+            return to_jstring(
+                    environment,
+                    CHAT_TEMPLATE_APPLY_FAILED
+            );
+        }
+
+        const int64_t templateMilliseconds =
+                elapsed_milliseconds(
+                        templateStartedAt,
+                        NativeSteadyClock::now()
+                );
+
+        const bool shouldAddSpecial =
+                addSpecial == JNI_TRUE;
+
+        const NativeTimePoint tokenizationStartedAt =
+                NativeSteadyClock::now();
+
+        const int32_t tokenizationProbe =
+                llama_tokenize(
+                        vocabulary,
+                        formattedPromptValue.c_str(),
+                        static_cast<int32_t>(
+                                formattedPromptValue.size()
+                        ),
+                        nullptr,
+                        0,
+                        shouldAddSpecial,
+                        true
+                );
+
+        if (tokenizationProbe >= 0) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        const int32_t requiredPromptTokens =
+                -tokenizationProbe;
+
+        if (requiredPromptTokens <= 0) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        const uint32_t contextSize =
+                llama_n_ctx(
+                        inferenceContext
+                );
+
+        if (
+                static_cast<uint32_t>(
+                        requiredPromptTokens
+                ) > contextSize
+                ) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_CONTEXT_EXCEEDED
+            );
+        }
+
+        std::vector<llama_token> promptTokens(
+                static_cast<std::size_t>(
+                        requiredPromptTokens
+                )
+        );
+
+        const int32_t promptTokenCount =
+                llama_tokenize(
+                        vocabulary,
+                        formattedPromptValue.c_str(),
+                        static_cast<int32_t>(
+                                formattedPromptValue.size()
+                        ),
+                        promptTokens.data(),
+                        requiredPromptTokens,
+                        shouldAddSpecial,
+                        true
+                );
+
+        if (promptTokenCount <= 0) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_TOKENIZATION_FAILED
+            );
+        }
+
+        const int64_t tokenizationMilliseconds =
+                elapsed_milliseconds(
+                        tokenizationStartedAt,
+                        NativeSteadyClock::now()
+                );
+
+        llama_memory_t contextMemory =
+                llama_get_memory(
+                        inferenceContext
+                );
+
+        if (contextMemory == nullptr) {
+            return to_jstring(
+                    environment,
+                    CHAT_PROMPT_INSPECTION_FAILED
+            );
+        }
+
+        llama_memory_clear(
+                contextMemory,
+                true
+        );
+
+        const NativeTimePoint promptDecodeStartedAt =
+                NativeSteadyClock::now();
+
+        int32_t decodedBatchCount = 0;
+
+        const bool promptDecodeSucceeded =
+                decode_prompt_tokens_in_batches(
+                        inferenceContext,
+                        promptTokens,
+                        promptTokenCount,
+                        decodedBatchCount
+                );
+
+        const int64_t promptDecodeMilliseconds =
+                elapsed_milliseconds(
+                        promptDecodeStartedAt,
+                        NativeSteadyClock::now()
+                );
+
+        llama_memory_clear(
+                contextMemory,
+                true
+        );
+
+        if (!promptDecodeSucceeded) {
+            return to_jstring(
+                    environment,
+                    GREEDY_SEQUENCE_PROMPT_DECODE_FAILED
+            );
+        }
+
+        const uint32_t availableOutputTokens =
+                contextSize -
+                static_cast<uint32_t>(
+                        promptTokenCount
+                );
+
+        const int64_t totalMilliseconds =
+                elapsed_milliseconds(
+                        totalStartedAt,
+                        NativeSteadyClock::now()
+                );
+
+        std::ostringstream result;
+
+        result
+                << "OK|CHAT_PROMPT_INSPECTION"
+                << "|RAW_CHAR_COUNT|"
+                << promptValue.size()
+                << "|FORMATTED_CHAR_COUNT|"
+                << formattedPromptValue.size()
+                << "|PROMPT_TOKEN_COUNT|"
+                << "|BATCH_SIZE|"
+                << llama_n_batch(
+                        inferenceContext
+                )
+                << "|DECODED_BATCH_COUNT|"
+                << decodedBatchCount
+                << promptTokenCount
+                << "|CONTEXT_SIZE|"
+                << contextSize
+                << "|AVAILABLE_OUTPUT_TOKENS|"
+                << availableOutputTokens
+                << "|TEMPLATE_MS|"
+                << templateMilliseconds
+                << "|TOKENIZATION_MS|"
+                << tokenizationMilliseconds
+                << "|PROMPT_DECODE_MS|"
+                << promptDecodeMilliseconds
+                << "|TOTAL_MS|"
+                << totalMilliseconds;
+
+        const std::string resultValue =
+                result.str();
+
+        return environment->NewStringUTF(
+                resultValue.c_str()
+        );
+    }
+
     jstring native_generate_greedy_sequence(
             JNIEnv* environment,
             jobject /* instance */,
@@ -1925,19 +2277,17 @@ namespace {
                 true
         );
 
-        llama_batch promptBatch =
-                llama_batch_get_one(
-                        promptTokens.data(),
-                        promptTokenCount
-                );
+        int32_t decodedPromptBatchCount = 0;
 
-        const int32_t promptDecodeResult =
-                llama_decode(
+        const bool promptDecodeSucceeded =
+                decode_prompt_tokens_in_batches(
                         inferenceContext,
-                        promptBatch
+                        promptTokens,
+                        promptTokenCount,
+                        decodedPromptBatchCount
                 );
 
-        if (promptDecodeResult != 0) {
+        if (!promptDecodeSucceeded) {
             llama_memory_clear(
                     contextMemory,
                     true
@@ -1948,6 +2298,7 @@ namespace {
                     GREEDY_SEQUENCE_PROMPT_DECODE_FAILED
             );
         }
+
 
         llama_sampler* greedySampler =
                 llama_sampler_init_greedy();
@@ -2961,6 +3312,15 @@ namespace {
                     ),
                     reinterpret_cast<void*>(
                             native_decode_prompt_probe
+                    )
+            },
+            {
+                    const_cast<char*>("inspectChatPrompt"),
+                    const_cast<char*>(
+                            "(Ljava/lang/String;Z)Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_inspect_chat_prompt
                     )
             },
             {
