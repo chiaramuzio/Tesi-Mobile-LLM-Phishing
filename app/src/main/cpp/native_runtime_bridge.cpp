@@ -205,6 +205,10 @@ namespace {
 
     constexpr std::size_t SAMPLING_MIN_KEEP = 1;
 
+    constexpr int32_t DEFAULT_GENERATION_THREADS = 4;
+
+    constexpr int32_t DEFAULT_BATCH_THREADS = 4;
+
     constexpr const char* NATIVE_TIMING_LOG_TAG =
             "PhishingNativeTiming";
 
@@ -230,6 +234,8 @@ namespace {
             const int32_t requestedTokenCount,
             const std::size_t generatedTokenCount,
             const bool reachedEndOfGeneration,
+            const int32_t generationThreads,
+            const int32_t batchThreads,
             const int64_t templateMilliseconds,
             const int64_t tokenizationMilliseconds,
             const int64_t promptDecodeMilliseconds,
@@ -245,6 +251,8 @@ namespace {
                 "requestedTokens=%d|"
                 "generatedTokens=%zu|"
                 "eog=%d|"
+                "generationThreads=%d|"
+                "batchThreads=%d|"
                 "templateMs=%lld|"
                 "tokenizationMs=%lld|"
                 "promptDecodeMs=%lld|"
@@ -255,6 +263,8 @@ namespace {
                 requestedTokenCount,
                 generatedTokenCount,
                 reachedEndOfGeneration ? 1 : 0,
+                generationThreads,
+                batchThreads,
                 static_cast<long long>(
                         templateMilliseconds
                 ),
@@ -854,8 +864,11 @@ namespace {
         contextParams.n_batch = 256;
         contextParams.n_ubatch = 128;
         contextParams.n_seq_max = 1;
-        contextParams.n_threads = 4;
-        contextParams.n_threads_batch = 4;
+        contextParams.n_threads =
+                DEFAULT_GENERATION_THREADS;
+
+        contextParams.n_threads_batch =
+                DEFAULT_BATCH_THREADS;
 
         inferenceContext =
                 llama_init_from_model(
@@ -2499,6 +2512,8 @@ namespace {
                 maxGeneratedTokens,
                 generatedTokens.size(),
                 reachedEndOfGeneration,
+                DEFAULT_GENERATION_THREADS,
+                DEFAULT_BATCH_THREADS,
                 templateMilliseconds,
                 tokenizationMilliseconds,
                 promptDecodeMilliseconds,
