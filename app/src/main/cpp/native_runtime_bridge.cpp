@@ -38,6 +38,13 @@ namespace {
 
     constexpr const char* MODEL_NOT_LOADED =
             "ERROR|MODEL_NOT_LOADED";
+
+    constexpr const char* CHAT_TEMPLATE_NOT_AVAILABLE =
+            "ERROR|CHAT_TEMPLATE_NOT_AVAILABLE";
+
+    constexpr const char* CHAT_TEMPLATE_APPLY_FAILED =
+            "ERROR|CHAT_TEMPLATE_APPLY_FAILED";
+
     constexpr const char* CONTEXT_CREATE_SUCCESS =
             "OK|CONTEXT_CREATED";
 
@@ -455,13 +462,88 @@ namespace {
         return true;
     }
 
+    bool apply_user_chat_template(
+            const llama_model* model,
+            const std::string& userPrompt,
+            std::string& formattedPrompt
+    ) {
+        if (model == nullptr) {
+            return false;
+        }
+
+        const char* chatTemplate =
+                llama_model_chat_template(
+                        model,
+                        nullptr
+                );
+
+        if (chatTemplate == nullptr) {
+            return false;
+        }
+
+        const llama_chat_message message = {
+                "user",
+                userPrompt.c_str()
+        };
+
+        int32_t formattedSize =
+                llama_chat_apply_template(
+                        chatTemplate,
+                        &message,
+                        1,
+                        true,
+                        nullptr,
+                        0
+                );
+
+        if (formattedSize <= 0) {
+            return false;
+        }
+
+        std::vector<char> formattedBuffer(
+                static_cast<std::size_t>(
+                        formattedSize
+                )
+        );
+
+        const int32_t writtenSize =
+                llama_chat_apply_template(
+                        chatTemplate,
+                        &message,
+                        1,
+                        true,
+                        formattedBuffer.data(),
+                        static_cast<int32_t>(
+                                formattedBuffer.size()
+                        )
+                );
+
+        if (
+                writtenSize <= 0 ||
+                writtenSize > static_cast<int32_t>(
+                        formattedBuffer.size()
+                )
+                ) {
+            return false;
+        }
+
+        formattedPrompt.assign(
+                formattedBuffer.data(),
+                static_cast<std::size_t>(
+                        writtenSize
+                )
+        );
+
+        return true;
+    }
+
     jstring native_version(
             JNIEnv* environment,
             jobject /* instance */
     ) {
         return to_jstring(
                 environment,
-                "phishingawareness-native-12-configured-sequence"
+                "phishingawareness-native-13-chat-template"
         );
     }
 
@@ -1961,6 +2043,8 @@ namespace {
             );
         }
 
+        std::string formattedPromptValue;
+
         std::lock_guard<std::mutex> lock(
                 modelMutex
         );
@@ -1976,6 +2060,32 @@ namespace {
             return to_jstring(
                     environment,
                     GREEDY_SEQUENCE_CONTEXT_NOT_CREATED
+            );
+        }
+
+        const char* chatTemplate =
+                llama_model_chat_template(
+                        loadedModel,
+                        nullptr
+                );
+
+        if (chatTemplate == nullptr) {
+            return to_jstring(
+                    environment,
+                    CHAT_TEMPLATE_NOT_AVAILABLE
+            );
+        }
+
+        if (
+                !apply_user_chat_template(
+                        loadedModel,
+                        promptValue,
+                        formattedPromptValue
+                )
+                ) {
+            return to_jstring(
+                    environment,
+                    CHAT_TEMPLATE_APPLY_FAILED
             );
         }
 
@@ -1997,14 +2107,14 @@ namespace {
         const int32_t tokenizationProbe =
                 llama_tokenize(
                         vocabulary,
-                        promptValue.c_str(),
+                        formattedPromptValue.c_str(),
                         static_cast<int32_t>(
-                                promptValue.size()
+                                formattedPromptValue.size()
                         ),
                         nullptr,
                         0,
                         shouldAddSpecial,
-                        false
+                        true
                 );
 
         if (tokenizationProbe >= 0) {
@@ -2058,14 +2168,14 @@ namespace {
         const int32_t promptTokenCount =
                 llama_tokenize(
                         vocabulary,
-                        promptValue.c_str(),
+                        formattedPromptValue.c_str(),
                         static_cast<int32_t>(
-                                promptValue.size()
+                                formattedPromptValue.size()
                         ),
                         promptTokens.data(),
                         requiredPromptTokens,
                         shouldAddSpecial,
-                        false
+                        true
                 );
 
         if (promptTokenCount <= 0) {
@@ -2172,6 +2282,16 @@ namespace {
                     sampledToken
             );
 
+            if (
+                    llama_vocab_is_eog(
+                            vocabulary,
+                            sampledToken
+                    )
+                    ) {
+                reachedEndOfGeneration = true;
+                break;
+            }
+
             std::string pieceHex;
 
             if (
@@ -2197,16 +2317,6 @@ namespace {
             }
 
             generatedHex += pieceHex;
-
-            if (
-                    llama_vocab_is_eog(
-                            vocabulary,
-                            sampledToken
-                    )
-                    ) {
-                reachedEndOfGeneration = true;
-                break;
-            }
 
             llama_token tokenToDecode =
                     sampledToken;

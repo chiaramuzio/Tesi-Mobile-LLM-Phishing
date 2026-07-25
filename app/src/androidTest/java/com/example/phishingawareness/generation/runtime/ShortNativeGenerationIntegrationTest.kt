@@ -118,6 +118,20 @@ class ShortNativeGenerationIntegrationTest {
                 result.rawText.isNotBlank()
             )
 
+            assertFalse(
+                "Il raw text contiene ancora il marker EOG.",
+                result.rawText.contains(
+                    "<end_of_turn>"
+                )
+            )
+
+            assertFalse(
+                "Il raw text contiene il marker EOG escapato.",
+                escapedRawText.contains(
+                    "<end_of_turn>"
+                )
+            )
+
             assertTrue(
                 "Il runtime non ha generato alcun token.",
                 result.generatedTokenCount > 0
