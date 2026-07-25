@@ -2923,20 +2923,37 @@ namespace {
 
             generatedHex += pieceHex;
 
-            llama_token tokenToDecode =
-                    sampledToken;
+            const int32_t generatedTokenPosition =
+                    promptTokenCount + generatedIndex;
 
             llama_batch generatedBatch =
-                    llama_batch_get_one(
-                            &tokenToDecode,
+                    llama_batch_init(
+                            1,
+                            0,
                             1
                     );
+
+            generatedBatch.n_tokens = 1;
+
+            generatedBatch.token[0] =
+                    sampledToken;
+
+            generatedBatch.pos[0] =
+                    generatedTokenPosition;
+
+            generatedBatch.n_seq_id[0] = 1;
+            generatedBatch.seq_id[0][0] = 0;
+            generatedBatch.logits[0] = true;
 
             const int32_t generatedDecodeResult =
                     llama_decode(
                             inferenceContext,
                             generatedBatch
                     );
+
+            llama_batch_free(
+                    generatedBatch
+            );
 
             if (generatedDecodeResult != 0) {
                 llama_sampler_free(
