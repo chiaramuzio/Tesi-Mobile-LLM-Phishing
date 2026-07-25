@@ -174,6 +174,16 @@ set(
     FORCE
 )
 
+if(
+        ANDROID
+        AND
+        CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a"
+)
+    add_compile_options(
+            -march=armv8.2-a+dotprod
+    )
+endif()
+
 add_subdirectory(
     third_party/llama.cpp
     llama.cpp-build
