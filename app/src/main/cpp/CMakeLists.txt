@@ -7,6 +7,13 @@ project(
     CXX
 )
 
+# I test strumentali Android usano il build type Debug.
+# Manteniamo i simboli di debug, ma abilitiamo l'ottimizzazione
+# del codice nativo per ottenere misure di inferenza realistiche.
+add_compile_options(
+        "$<$<CONFIG:Debug>:-O3>"
+)
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
