@@ -10,6 +10,10 @@ object NativeRuntimeBridge {
 
     external fun nativeVersion(): String
 
+    external fun systemInfo(): String
+
+    external fun contextRuntimeInfo(): String
+
     external fun llamaSupportsMmap(): Boolean
 
     external fun llamaMaxDevices(): Long

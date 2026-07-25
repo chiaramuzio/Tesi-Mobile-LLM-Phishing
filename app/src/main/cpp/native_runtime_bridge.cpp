@@ -201,6 +201,9 @@ namespace {
     constexpr const char* SAMPLING_CHAIN_CREATE_FAILED =
             "ERROR|SAMPLING_CHAIN_CREATION_FAILED";
 
+    constexpr const char* SYSTEM_INFO_UNAVAILABLE =
+            "ERROR|SYSTEM_INFO_UNAVAILABLE";
+
     constexpr int32_t SAMPLING_PENALTY_LAST_N = 64;
 
     constexpr std::size_t SAMPLING_MIN_KEEP = 1;
@@ -628,6 +631,89 @@ namespace {
         return to_jstring(
                 environment,
                 "phishingawareness-native-13-chat-template"
+        );
+    }
+
+    jstring native_system_info(
+            JNIEnv* environment,
+            jobject /* instance */
+    ) {
+        const char* systemInfo =
+                llama_print_system_info();
+
+        if (systemInfo == nullptr) {
+            return to_jstring(
+                    environment,
+                    SYSTEM_INFO_UNAVAILABLE
+            );
+        }
+
+        const std::string result =
+                "OK|SYSTEM_INFO|" +
+                std::string(
+                        systemInfo
+                );
+
+        return environment->NewStringUTF(
+                result.c_str()
+        );
+    }
+
+    jstring native_context_runtime_info(
+            JNIEnv* environment,
+            jobject /* instance */
+    ) {
+        std::lock_guard<std::mutex> lock(
+                modelMutex
+        );
+
+        if (inferenceContext == nullptr) {
+            return to_jstring(
+                    environment,
+                    CONTEXT_NOT_CREATED
+            );
+        }
+
+        std::ostringstream result;
+
+        result
+                << "OK|CONTEXT_RUNTIME_INFO"
+                << "|CONTEXT_SIZE|"
+                << llama_n_ctx(
+                        inferenceContext
+                )
+                << "|GENERATION_THREADS|"
+                << llama_n_threads(
+                        inferenceContext
+                )
+                << "|BATCH_THREADS|"
+                << llama_n_threads_batch(
+                        inferenceContext
+                )
+                << "|MMAP_SUPPORTED|"
+                << (
+                        llama_supports_mmap()
+                        ? 1
+                        : 0
+                )
+                << "|GPU_OFFLOAD_SUPPORTED|"
+                << (
+                        llama_supports_gpu_offload()
+                        ? 1
+                        : 0
+                )
+                << "|RPC_SUPPORTED|"
+                << (
+                        llama_supports_rpc()
+                        ? 1
+                        : 0
+                );
+
+        const std::string resultValue =
+                result.str();
+
+        return environment->NewStringUTF(
+                resultValue.c_str()
         );
     }
 
@@ -2759,6 +2845,24 @@ namespace {
                     const_cast<char*>("()Ljava/lang/String;"),
                     reinterpret_cast<void*>(
                             native_version
+                    )
+            },
+            {
+                    const_cast<char*>("systemInfo"),
+                    const_cast<char*>(
+                            "()Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_system_info
+                    )
+            },
+            {
+                    const_cast<char*>("contextRuntimeInfo"),
+                    const_cast<char*>(
+                            "()Ljava/lang/String;"
+                    ),
+                    reinterpret_cast<void*>(
+                            native_context_runtime_info
                     )
             },
             {
