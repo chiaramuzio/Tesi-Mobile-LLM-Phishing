@@ -630,7 +630,7 @@ namespace {
 
     bool decode_prompt_tokens_in_batches(
             llama_context* context,
-            std::vector<llama_token>& tokens,
+            const std::vector<llama_token>& tokens,
             int32_t tokenCount,
             int32_t& decodedBatchCount
     ) {
@@ -670,18 +670,51 @@ namespace {
                             )
                     );
 
-            llama_batch promptBatch =
-                    llama_batch_get_one(
-                            tokens.data() +
-                            tokenOffset,
-                            currentBatchTokenCount
+            llama_batch batch =
+                    llama_batch_init(
+                            currentBatchTokenCount,
+                            0,
+                            1
                     );
+
+            batch.n_tokens =
+                    currentBatchTokenCount;
+
+            for (
+                    int32_t localIndex = 0;
+                    localIndex < currentBatchTokenCount;
+                    ++localIndex
+                    ) {
+                const int32_t absoluteTokenIndex =
+                        tokenOffset + localIndex;
+
+                batch.token[localIndex] =
+                        tokens[
+                                static_cast<std::size_t>(
+                                        absoluteTokenIndex
+                                )
+                        ];
+
+                batch.pos[localIndex] =
+                        absoluteTokenIndex;
+
+                batch.n_seq_id[localIndex] = 1;
+                batch.seq_id[localIndex][0] = 0;
+
+                batch.logits[localIndex] =
+                        absoluteTokenIndex ==
+                        tokenCount - 1;
+            }
 
             const int32_t decodeResult =
                     llama_decode(
                             context,
-                            promptBatch
+                            batch
                     );
+
+            llama_batch_free(
+                    batch
+            );
 
             if (decodeResult != 0) {
                 return false;
@@ -2748,19 +2781,17 @@ namespace {
                 true
         );
 
-        llama_batch promptBatch =
-                llama_batch_get_one(
-                        promptTokens.data(),
-                        promptTokenCount
-                );
+        int32_t decodedPromptBatchCount = 0;
 
         const NativeTimePoint promptDecodeStartedAt =
                 NativeSteadyClock::now();
 
-        const int32_t promptDecodeResult =
-                llama_decode(
+        const bool promptDecodeSucceeded =
+                decode_prompt_tokens_in_batches(
                         inferenceContext,
-                        promptBatch
+                        promptTokens,
+                        promptTokenCount,
+                        decodedPromptBatchCount
                 );
 
         const int64_t promptDecodeMilliseconds =
@@ -2769,7 +2800,8 @@ namespace {
                         NativeSteadyClock::now()
                 );
 
-        if (promptDecodeResult != 0) {
+        if (!promptDecodeSucceeded) {
+
             llama_memory_clear(
                     contextMemory,
                     true
