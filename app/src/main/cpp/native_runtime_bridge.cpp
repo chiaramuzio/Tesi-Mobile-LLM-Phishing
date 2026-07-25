@@ -165,6 +165,7 @@ namespace {
             "ERROR|GENERATED_TOKEN_DECODE_FAILED";
 
     constexpr int32_t MAX_GREEDY_PROBE_TOKENS = 8;
+    constexpr int32_t MAX_CONFIGURED_GENERATION_TOKENS = 1200;
 
     constexpr const char* SAMPLING_INVALID_MAX_TOKENS =
             "ERROR|INVALID_MAX_GENERATED_TOKENS";
@@ -1874,7 +1875,7 @@ namespace {
 
         if (
                 maxGeneratedTokens <= 0 ||
-                maxGeneratedTokens > MAX_GREEDY_PROBE_TOKENS
+                maxGeneratedTokens > MAX_CONFIGURED_GENERATION_TOKENS
                 ) {
             return to_jstring(
                     environment,
