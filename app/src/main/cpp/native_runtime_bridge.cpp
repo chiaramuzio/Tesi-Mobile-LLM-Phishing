@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <android/log.h>
+#include <chrono>
+#include <cstdint>
 
 #include "llama.h"
 
@@ -201,6 +204,77 @@ namespace {
     constexpr int32_t SAMPLING_PENALTY_LAST_N = 64;
 
     constexpr std::size_t SAMPLING_MIN_KEEP = 1;
+
+    constexpr const char* NATIVE_TIMING_LOG_TAG =
+            "PhishingNativeTiming";
+
+    using NativeSteadyClock =
+            std::chrono::steady_clock;
+
+    using NativeTimePoint =
+            NativeSteadyClock::time_point;
+
+    int64_t elapsed_milliseconds(
+            const NativeTimePoint& startedAt,
+            const NativeTimePoint& endedAt
+    ) {
+        return std::chrono::duration_cast<
+                std::chrono::milliseconds
+        >(
+                endedAt - startedAt
+        ).count();
+    }
+
+    void log_configured_generation_timings(
+            const int32_t promptTokenCount,
+            const int32_t requestedTokenCount,
+            const std::size_t generatedTokenCount,
+            const bool reachedEndOfGeneration,
+            const int64_t templateMilliseconds,
+            const int64_t tokenizationMilliseconds,
+            const int64_t promptDecodeMilliseconds,
+            const int64_t samplerCreationMilliseconds,
+            const int64_t generationMilliseconds,
+            const int64_t totalNativeMilliseconds
+    ) {
+        __android_log_print(
+                ANDROID_LOG_INFO,
+                NATIVE_TIMING_LOG_TAG,
+                "NATIVE_TIMING|"
+                "promptTokens=%d|"
+                "requestedTokens=%d|"
+                "generatedTokens=%zu|"
+                "eog=%d|"
+                "templateMs=%lld|"
+                "tokenizationMs=%lld|"
+                "promptDecodeMs=%lld|"
+                "samplerCreationMs=%lld|"
+                "generationMs=%lld|"
+                "totalNativeMs=%lld",
+                promptTokenCount,
+                requestedTokenCount,
+                generatedTokenCount,
+                reachedEndOfGeneration ? 1 : 0,
+                static_cast<long long>(
+                        templateMilliseconds
+                ),
+                static_cast<long long>(
+                        tokenizationMilliseconds
+                ),
+                static_cast<long long>(
+                        promptDecodeMilliseconds
+                ),
+                static_cast<long long>(
+                        samplerCreationMilliseconds
+                ),
+                static_cast<long long>(
+                        generationMilliseconds
+                ),
+                static_cast<long long>(
+                        totalNativeMilliseconds
+                )
+        );
+    }
 
     llama_model* loadedModel = nullptr;
     llama_context* inferenceContext = nullptr;
@@ -1168,6 +1242,7 @@ namespace {
             );
         }
 
+
         llama_memory_t contextMemory =
                 llama_get_memory(
                         inferenceContext
@@ -2063,6 +2138,12 @@ namespace {
             );
         }
 
+        const NativeTimePoint totalStartedAt =
+                NativeSteadyClock::now();
+
+        const NativeTimePoint templateStartedAt =
+                NativeSteadyClock::now();
+
         const char* chatTemplate =
                 llama_model_chat_template(
                         loadedModel,
@@ -2089,6 +2170,12 @@ namespace {
             );
         }
 
+        const int64_t templateMilliseconds =
+                elapsed_milliseconds(
+                        templateStartedAt,
+                        NativeSteadyClock::now()
+                );
+
         const llama_vocab* vocabulary =
                 llama_model_get_vocab(
                         loadedModel
@@ -2103,6 +2190,9 @@ namespace {
 
         const bool shouldAddSpecial =
                 addSpecial == JNI_TRUE;
+
+        const NativeTimePoint tokenizationStartedAt =
+                NativeSteadyClock::now();
 
         const int32_t tokenizationProbe =
                 llama_tokenize(
@@ -2185,6 +2275,12 @@ namespace {
             );
         }
 
+        const int64_t tokenizationMilliseconds =
+                elapsed_milliseconds(
+                        tokenizationStartedAt,
+                        NativeSteadyClock::now()
+                );
+
         llama_memory_t contextMemory =
                 llama_get_memory(
                         inferenceContext
@@ -2208,10 +2304,19 @@ namespace {
                         promptTokenCount
                 );
 
+        const NativeTimePoint promptDecodeStartedAt =
+                NativeSteadyClock::now();
+
         const int32_t promptDecodeResult =
                 llama_decode(
                         inferenceContext,
                         promptBatch
+                );
+
+        const int64_t promptDecodeMilliseconds =
+                elapsed_milliseconds(
+                        promptDecodeStartedAt,
+                        NativeSteadyClock::now()
                 );
 
         if (promptDecodeResult != 0) {
@@ -2226,6 +2331,9 @@ namespace {
             );
         }
 
+        const NativeTimePoint samplerCreationStartedAt =
+                NativeSteadyClock::now();
+
         llama_sampler* samplingChain =
                 create_sampling_chain(
                         temperature,
@@ -2234,6 +2342,12 @@ namespace {
                         minP,
                         repeatPenalty,
                         seed
+                );
+
+        const int64_t samplerCreationMilliseconds =
+                elapsed_milliseconds(
+                        samplerCreationStartedAt,
+                        NativeSteadyClock::now()
                 );
 
         if (samplingChain == nullptr) {
@@ -2266,6 +2380,9 @@ namespace {
         std::string generatedHex;
         bool reachedEndOfGeneration = false;
 
+        const NativeTimePoint generationStartedAt =
+                NativeSteadyClock::now();
+
         for (
                 int32_t generatedIndex = 0;
                 generatedIndex < maxGeneratedTokens;
@@ -2276,6 +2393,12 @@ namespace {
                             samplingChain,
                             inferenceContext,
                             -1
+                    );
+
+            const int64_t generationMilliseconds =
+                    elapsed_milliseconds(
+                            generationStartedAt,
+                            NativeSteadyClock::now()
                     );
 
             generatedTokens.push_back(
@@ -2350,6 +2473,12 @@ namespace {
             }
         }
 
+        const int64_t generationMilliseconds =
+                elapsed_milliseconds(
+                        generationStartedAt,
+                        NativeSteadyClock::now()
+                );
+
         llama_sampler_free(
                 samplingChain
         );
@@ -2357,6 +2486,25 @@ namespace {
         llama_memory_clear(
                 contextMemory,
                 true
+        );
+
+        const int64_t totalNativeMilliseconds =
+                elapsed_milliseconds(
+                        totalStartedAt,
+                        NativeSteadyClock::now()
+                );
+
+        log_configured_generation_timings(
+                promptTokenCount,
+                maxGeneratedTokens,
+                generatedTokens.size(),
+                reachedEndOfGeneration,
+                templateMilliseconds,
+                tokenizationMilliseconds,
+                promptDecodeMilliseconds,
+                samplerCreationMilliseconds,
+                generationMilliseconds,
+                totalNativeMilliseconds
         );
 
         std::ostringstream tokenIdsStream;

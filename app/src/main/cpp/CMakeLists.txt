@@ -197,8 +197,8 @@ find_library(
 )
 
 target_link_libraries(
-    phishingawareness_native
-    PRIVATE
-    llama
-    ${android_log_library}
+        phishingawareness_native
+        PRIVATE
+        llama
+        log
 )
