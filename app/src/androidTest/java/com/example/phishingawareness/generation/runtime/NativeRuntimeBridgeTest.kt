@@ -81,7 +81,7 @@ class NativeRuntimeBridgeTest {
         )
 
         assertEquals(
-            3_155_051_328L,
+            1_003_541_152L,
             modelFile.length()
         )
 
@@ -122,7 +122,7 @@ class NativeRuntimeBridgeTest {
         )
 
         assertEquals(
-            3_155_051_328L,
+            1_003_541_152L,
             modelFile.length()
         )
 
@@ -1051,7 +1051,7 @@ class NativeRuntimeBridgeTest {
         )
 
         assertEquals(
-            3_155_051_328L,
+            1_003_541_152L,
             modelFile.length()
         )
 

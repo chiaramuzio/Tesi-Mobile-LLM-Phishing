@@ -17,7 +17,7 @@ class DefaultLocalModelBootstrapTest {
                     absolutePath =
                         "/models/gemma.gguf",
                     sizeBytes =
-                        3_155_051_328L
+                        1_003_541_152L
                 )
             }
 
@@ -48,7 +48,7 @@ class DefaultLocalModelBootstrapTest {
         )
 
         assertEquals(
-            3_155_051_328L,
+            1_003_541_152L,
             result.modelSizeBytes
         )
 
@@ -112,7 +112,7 @@ class DefaultLocalModelBootstrapTest {
                     absolutePath =
                         "/models/gemma.gguf",
                     sizeBytes =
-                        3_155_051_328L
+                        1_003_541_152L
                 )
             }
 
