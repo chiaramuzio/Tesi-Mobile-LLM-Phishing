@@ -10,6 +10,7 @@ import com.example.phishingawareness.domain.model.RuntimePromptSectionResolution
 import com.example.phishingawareness.domain.model.Scenario
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class DeterministicRuntimePromptSectionResolverTest {
@@ -239,6 +240,84 @@ class DeterministicRuntimePromptSectionResolverTest {
             }
         """.trimIndent(),
             section.content
+        )
+    }
+
+    @Test
+    fun resolve_withoutOverride_preservesStandardOutputFormat() {
+        val result =
+            DeterministicRuntimePromptSectionResolver()
+                .resolve(
+                    bankingParameters()
+                ) as RuntimePromptSectionResolutionResult.Success
+
+        val outputFormat =
+            result.configuration.sections
+                .single { section ->
+                    section.id == "OUTPUT_FORMAT"
+                }
+                .content
+
+        assertTrue(
+            outputFormat.contains(
+                "\"subject\": \"string\""
+            )
+        )
+
+        assertTrue(
+            outputFormat.contains(
+                "\"evidence\": \"string\""
+            )
+        )
+
+        assertTrue(
+            outputFormat.contains(
+                "\"educational_summary\": \"string\""
+            )
+        )
+    }
+
+    @Test
+    fun resolve_withCompactOverride_usesGemma1BContract() {
+        val compactResolver =
+            DeterministicRuntimePromptSectionResolver(
+                outputFormatOverride =
+                    Gemma1BCompactOutputContract.content
+            )
+
+        val result =
+            compactResolver.resolve(
+                bankingParameters()
+            ) as RuntimePromptSectionResolutionResult.Success
+
+        val outputFormat =
+            result.configuration.sections
+                .single { section ->
+                    section.id == "OUTPUT_FORMAT"
+                }
+                .content
+
+        assertEquals(
+            Gemma1BCompactOutputContract.content,
+            outputFormat
+        )
+
+        assertFalse(
+            outputFormat.contains(
+                "\"string\""
+            )
+        )
+
+        assertTrue(
+            outputFormat.contains(
+                "present_indicators"
+            )
+        )
+
+        assertTrue(
+            outputFormat.contains(
+                "educational_summary"
+            )
         )
     }
 

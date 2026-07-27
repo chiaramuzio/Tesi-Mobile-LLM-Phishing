@@ -12,7 +12,8 @@ import com.example.phishingawareness.domain.prompt.RuntimePromptSectionResolver
 
 class DeterministicRuntimePromptSectionResolver(
     private val ruleCatalog: RuntimePromptRuleCatalog =
-        FrozenRuntimePromptRuleCatalog
+        FrozenRuntimePromptRuleCatalog,
+    private val outputFormatOverride: String? = null
 ) : RuntimePromptSectionResolver {
 
     override fun resolve(
@@ -223,34 +224,40 @@ class DeterministicRuntimePromptSectionResolver(
     private fun outputFormatSection(): ResolvedPromptSection {
         return ResolvedPromptSection(
             id = SECTION_OUTPUT_FORMAT,
-            content = """
-                FORMATO OBBLIGATORIO
-                {
-                  "scenario": "string",
-                  "difficulty": "string",
-                  "length": "string",
-                  "sender_name": "string",
-                  "sender_address": "string",
-                  "recipient": "string",
-                  "subject": "string",
-                  "body": "string",
-                  "pretext": "string",
-                  "cta_type": "string",
-                  "cta_text": "string",
-                  "present_indicators": [
-                    {
-                      "id": "string",
-                      "evidence": "string",
-                      "explanation": "string"
-                    }
-                  ],
-                  "credibility_elements": [
-                    "string"
-                  ],
-                  "educational_summary": "string"
-                }
-            """.trimIndent()
+            content =
+                outputFormatOverride
+                    ?: standardOutputFormatContent()
         )
+    }
+
+    private fun standardOutputFormatContent(): String {
+        return """
+        FORMATO OBBLIGATORIO
+        {
+          "scenario": "string",
+          "difficulty": "string",
+          "length": "string",
+          "sender_name": "string",
+          "sender_address": "string",
+          "recipient": "string",
+          "subject": "string",
+          "body": "string",
+          "pretext": "string",
+          "cta_type": "string",
+          "cta_text": "string",
+          "present_indicators": [
+            {
+              "id": "string",
+              "evidence": "string",
+              "explanation": "string"
+            }
+          ],
+          "credibility_elements": [
+            "string"
+          ],
+          "educational_summary": "string"
+        }
+    """.trimIndent()
     }
 
     private fun validate(
