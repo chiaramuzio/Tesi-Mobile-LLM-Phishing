@@ -1,4 +1,4 @@
-package com.example.phishingawareness.generation.model
+﻿package com.example.phishingawareness.generation.model
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -23,7 +23,7 @@ class AndroidLocalModelPathProviderTest {
 
         assertTrue(
             buildString {
-                append("Il modello non è disponibile sul dispositivo. ")
+                append("Il modello non Ã¨ disponibile sul dispositivo. ")
 
                 if (result is LocalModelPathResult.Unavailable) {
                     append("Codice: ")
@@ -42,7 +42,7 @@ class AndroidLocalModelPathProviderTest {
         assertTrue(
             result.absolutePath.endsWith(
                 "/files/models/" +
-                        "gemma-3-4b-it-q4_0.gguf"
+                        "gemma-3-1b-it-q4_0.gguf"
             )
         )
 

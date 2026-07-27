@@ -1,4 +1,4 @@
-package com.example.phishingawareness.generation.runtime
+﻿package com.example.phishingawareness.generation.runtime
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -72,7 +72,7 @@ class NativeRuntimeBridgeTest {
         val modelFile =
             File(
                 modelsDirectory,
-                "gemma-3-4b-it-q4_0.gguf"
+                "gemma-3-1b-it-q4_0.gguf"
             )
 
         assertTrue(
@@ -113,7 +113,7 @@ class NativeRuntimeBridgeTest {
         val modelFile =
             File(
                 modelsDirectory,
-                "gemma-3-4b-it-q4_0.gguf"
+                "gemma-3-1b-it-q4_0.gguf"
             )
 
         assertTrue(
@@ -189,7 +189,7 @@ class NativeRuntimeBridgeTest {
         val modelFile =
             File(
                 modelsDirectory,
-                "gemma-3-4b-it-q4_0.gguf"
+                "gemma-3-1b-it-q4_0.gguf"
             )
 
         assertTrue(
@@ -303,7 +303,7 @@ class NativeRuntimeBridgeTest {
         val modelFile =
             File(
                 modelsDirectory,
-                "gemma-3-4b-it-q4_0.gguf"
+                "gemma-3-1b-it-q4_0.gguf"
             )
 
         assertTrue(
@@ -378,7 +378,7 @@ class NativeRuntimeBridgeTest {
         val utf8Result =
             NativeRuntimeBridge.tokenizePrompt(
                 prompt =
-                    "È possibile verificare l’account aziendale?",
+                    "Ãˆ possibile verificare lâ€™account aziendale?",
                 addSpecial = true
             )
 
@@ -459,7 +459,7 @@ class NativeRuntimeBridgeTest {
         val modelFile =
             File(
                 modelsDirectory,
-                "gemma-3-4b-it-q4_0.gguf"
+                "gemma-3-1b-it-q4_0.gguf"
             )
 
         assertTrue(
@@ -586,7 +586,7 @@ class NativeRuntimeBridgeTest {
         val modelFile =
             File(
                 modelsDirectory,
-                "gemma-3-4b-it-q4_0.gguf"
+                "gemma-3-1b-it-q4_0.gguf"
             )
 
         assertTrue(
@@ -723,7 +723,7 @@ class NativeRuntimeBridgeTest {
         val modelFile =
             File(
                 modelsDirectory,
-                "gemma-3-4b-it-q4_0.gguf"
+                "gemma-3-1b-it-q4_0.gguf"
             )
 
         assertTrue(
@@ -914,7 +914,7 @@ class NativeRuntimeBridgeTest {
         val modelFile =
             File(
                 modelsDirectory,
-                "gemma-3-4b-it-q4_0.gguf"
+                "gemma-3-1b-it-q4_0.gguf"
             )
 
         assertTrue(
@@ -1042,7 +1042,7 @@ class NativeRuntimeBridgeTest {
         val modelFile =
             File(
                 modelsDirectory,
-                "gemma-3-4b-it-q4_0.gguf"
+                "gemma-3-1b-it-q4_0.gguf"
             )
 
         assertTrue(
