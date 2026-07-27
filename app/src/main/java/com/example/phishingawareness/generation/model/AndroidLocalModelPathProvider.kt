@@ -100,6 +100,6 @@ class AndroidLocalModelPathProvider(
             "gemma-3-1b-it-q4_0.gguf"
 
         const val EXPECTED_MODEL_SIZE_BYTES =
-            3_155_051_328L
+            1_003_541_152L
     }
 }
