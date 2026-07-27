@@ -13,7 +13,7 @@ import com.example.phishingawareness.generation.prompt.DeterministicPromptParame
 import com.example.phishingawareness.generation.prompt.DeterministicRuntimePromptGenerationOrchestrator
 import com.example.phishingawareness.generation.prompt.DeterministicRuntimePromptSectionResolver
 import com.example.phishingawareness.generation.prompt.FrozenRuntimePromptProfileCatalog
-import com.example.phishingawareness.generation.prompt.Gemma1BCompactOutputContract
+import com.example.phishingawareness.generation.prompt.Gemma1BCompactRuntimePromptSectionResolver
 
 class AppContainer(
     context: Context
@@ -47,10 +47,7 @@ class AppContainer(
                         libraryRepository
                 ),
             sectionResolver =
-                DeterministicRuntimePromptSectionResolver(
-                    outputFormatOverride =
-                        Gemma1BCompactOutputContract.content
-                ),
+                Gemma1BCompactRuntimePromptSectionResolver(),
             promptBuilder =
                 DeterministicPromptBuilder()
         )

@@ -36,19 +36,13 @@ class Gemma1BCompactOutputContractTest {
 
         assertTrue(
             content.contains(
-                "Non usare Markdown o blocchi di codice."
+                "Rispondi solo con JSON valido, senza Markdown."
             )
         )
 
         assertTrue(
             content.contains(
-                "Il primo carattere deve essere {"
-            )
-        )
-
-        assertTrue(
-            content.contains(
-                "L'ultimo carattere deve essere }"
+                "Nessuna chiave aggiuntiva."
             )
         )
     }

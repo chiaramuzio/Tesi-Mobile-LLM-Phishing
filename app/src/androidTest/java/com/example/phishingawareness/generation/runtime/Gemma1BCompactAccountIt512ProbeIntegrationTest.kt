@@ -14,7 +14,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class Gemma1BCompactAccountItProbeIntegrationTest {
+class Gemma1BCompactAccountIt512ProbeIntegrationTest {
 
     @Test
     fun generate_accountItRuntimePrompt_returnsNativeSequence() {
@@ -84,7 +84,7 @@ class Gemma1BCompactAccountItProbeIntegrationTest {
         )
 
         println(
-            "GEMMA_1B_COMPACT_ACCOUNT_IT_ARTIFACT|" +
+            "GEMMA_1B_COMPACT_ACCOUNT_IT_512_ARTIFACT|" +
                     "profile=" +
                     "${artifact.metadata.resolvedConfigurationId}|" +
                     "rawChars=${artifact.text.length}|" +
@@ -152,7 +152,7 @@ class Gemma1BCompactAccountItProbeIntegrationTest {
                         startedAt
 
             logChunked(
-                marker = "GEMMA_1B_COMPACT_ACCOUNT_IT_PROTOCOL",
+                marker = "GEMMA_1B_COMPACT_ACCOUNT_IT_512_PROTOCOL",
                 value = nativeProtocol
             )
 
@@ -175,13 +175,13 @@ class Gemma1BCompactAccountItProbeIntegrationTest {
                 )
 
             println(
-                "GEMMA_1B_COMPACT_ACCOUNT_IT_TOKEN_IDS|" +
+                "GEMMA_1B_COMPACT_ACCOUNT_IT_512_TOKEN_IDS|" +
                         "count=${result.tokenIds.size}|" +
                         "values=${result.tokenIds.joinToString(",")}"
             )
 
             println(
-                "GEMMA_1B_COMPACT_ACCOUNT_IT_RESULT|" +
+                "GEMMA_1B_COMPACT_ACCOUNT_IT_512_RESULT|" +
                         "elapsedMs=$elapsedMilliseconds|" +
                         "requestedTokens=${result.requestedTokenCount}|" +
                         "generatedTokens=${result.generatedTokenCount}|" +
@@ -289,7 +289,7 @@ class Gemma1BCompactAccountItProbeIntegrationTest {
             "ACCOUNT_IT_MEDIUM_MEDIUM"
 
         const val CONTEXT_SIZE = 8192
-        const val MAX_GENERATED_TOKENS = 256
+        const val MAX_GENERATED_TOKENS = 512
         const val LOG_CHUNK_SIZE = 1500
 
         const val TEMPERATURE = 0.4f
@@ -300,3 +300,4 @@ class Gemma1BCompactAccountItProbeIntegrationTest {
         const val SEED = 101
     }
 }
+
