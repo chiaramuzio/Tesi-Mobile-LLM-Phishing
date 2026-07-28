@@ -2,10 +2,12 @@
 
 import com.example.phishingawareness.domain.model.CompactParsedPhishingEmail
 import com.example.phishingawareness.domain.model.GeneratedEmail
+import com.example.phishingawareness.domain.modeloutput.CompactParsedEmailMapper
 
-class DeterministicCompactParsedEmailMapper {
+class DeterministicCompactParsedEmailMapper :
+    CompactParsedEmailMapper {
 
-    fun map(
+    override fun map(
         email: CompactParsedPhishingEmail
     ): GeneratedEmail {
         require(email.senderName.isNotBlank()) {

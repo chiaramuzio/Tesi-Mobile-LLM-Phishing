@@ -10,12 +10,13 @@ import com.example.phishingawareness.domain.model.Scenario
 import com.example.phishingawareness.domain.repository.LibraryRepository
 import org.json.JSONException
 import org.json.JSONObject
+import com.example.phishingawareness.domain.modeloutput.CompactModelOutputParser
 
 class DeterministicCompactModelOutputParser(
     private val libraryRepository: LibraryRepository
-) {
+) : CompactModelOutputParser {
 
-    fun parse(
+    override fun parse(
         request: CompactModelOutputParseRequest
     ): CompactModelOutputParseResult {
         val trimmedOutput = request.rawOutput.trim()
