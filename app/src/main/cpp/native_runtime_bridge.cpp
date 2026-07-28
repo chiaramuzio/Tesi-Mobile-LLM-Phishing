@@ -9,6 +9,7 @@
 #include <android/log.h>
 #include <chrono>
 #include <cstdint>
+#include <algorithm>
 
 #include "llama.h"
 
@@ -212,6 +213,8 @@ namespace {
 
     constexpr int32_t DEFAULT_BATCH_THREADS = 4;
 
+    constexpr int32_t PROMPT_DECODE_CHUNK_SIZE = 256;
+
     constexpr const char* NATIVE_TIMING_LOG_TAG =
             "PhishingNativeTiming";
 
@@ -230,6 +233,56 @@ namespace {
         >(
                 endedAt - startedAt
         ).count();
+    }
+
+    bool decode_tokens_in_chunks(
+            llama_context* context,
+            const llama_token* tokens,
+            const int32_t tokenCount
+    ) {
+        if (
+                context == nullptr ||
+                tokens == nullptr ||
+                tokenCount <= 0
+                ) {
+            return false;
+        }
+
+        int32_t decodedTokenCount = 0;
+
+        while (decodedTokenCount < tokenCount) {
+            const int32_t remainingTokenCount =
+                    tokenCount - decodedTokenCount;
+
+            const int32_t currentChunkSize =
+                    std::min(
+                            PROMPT_DECODE_CHUNK_SIZE,
+                            remainingTokenCount
+                    );
+
+            llama_batch chunkBatch =
+                    llama_batch_get_one(
+                            const_cast<llama_token*>(
+                                    tokens + decodedTokenCount
+                            ),
+                            currentChunkSize
+                    );
+
+            const int32_t decodeResult =
+                    llama_decode(
+                            context,
+                            chunkBatch
+                    );
+
+            if (decodeResult != 0) {
+                return false;
+            }
+
+            decodedTokenCount +=
+                    currentChunkSize;
+        }
+
+        return true;
     }
 
     void log_configured_generation_timings(
@@ -630,7 +683,7 @@ namespace {
     ) {
         return to_jstring(
                 environment,
-                "phishingawareness-native-13-chat-template"
+                "phishingawareness-native-14-chunked-prompt-decode"
         );
     }
 
@@ -1359,19 +1412,14 @@ namespace {
                 true
         );
 
-        llama_batch batch =
-                llama_batch_get_one(
+        const bool decodeSucceeded =
+                decode_tokens_in_chunks(
+                        inferenceContext,
                         tokens.data(),
                         tokenCount
                 );
 
-        const int32_t decodeResult =
-                llama_decode(
-                        inferenceContext,
-                        batch
-                );
-
-        if (decodeResult != 0) {
+        if (!decodeSucceeded) {
             llama_memory_clear(
                     contextMemory,
                     true
@@ -1563,19 +1611,14 @@ namespace {
                 true
         );
 
-        llama_batch promptBatch =
-                llama_batch_get_one(
+        const bool promptDecodeSucceeded =
+                decode_tokens_in_chunks(
+                        inferenceContext,
                         promptTokens.data(),
                         promptTokenCount
                 );
 
-        const int32_t promptDecodeResult =
-                llama_decode(
-                        inferenceContext,
-                        promptBatch
-                );
-
-        if (promptDecodeResult != 0) {
+        if (!promptDecodeSucceeded) {
             llama_memory_clear(
                     contextMemory,
                     true
@@ -1925,19 +1968,14 @@ namespace {
                 true
         );
 
-        llama_batch promptBatch =
-                llama_batch_get_one(
+        const bool promptDecodeSucceeded =
+                decode_tokens_in_chunks(
+                        inferenceContext,
                         promptTokens.data(),
                         promptTokenCount
                 );
 
-        const int32_t promptDecodeResult =
-                llama_decode(
-                        inferenceContext,
-                        promptBatch
-                );
-
-        if (promptDecodeResult != 0) {
+        if (!promptDecodeSucceeded) {
             llama_memory_clear(
                     contextMemory,
                     true
@@ -2397,19 +2435,14 @@ namespace {
                 true
         );
 
-        llama_batch promptBatch =
-                llama_batch_get_one(
-                        promptTokens.data(),
-                        promptTokenCount
-                );
-
         const NativeTimePoint promptDecodeStartedAt =
                 NativeSteadyClock::now();
 
-        const int32_t promptDecodeResult =
-                llama_decode(
+        const bool promptDecodeSucceeded =
+                decode_tokens_in_chunks(
                         inferenceContext,
-                        promptBatch
+                        promptTokens.data(),
+                        promptTokenCount
                 );
 
         const int64_t promptDecodeMilliseconds =
@@ -2418,7 +2451,7 @@ namespace {
                         NativeSteadyClock::now()
                 );
 
-        if (promptDecodeResult != 0) {
+        if (!promptDecodeSucceeded) {
             llama_memory_clear(
                     contextMemory,
                     true

@@ -14,7 +14,7 @@ class NativeRuntimeBridgeTest {
     @Test
     fun nativeVersion_samplingContractEnabled_returnsExpectedVersion() {
         assertEquals(
-            "phishingawareness-native-13-chat-template",
+            "phishingawareness-native-14-chunked-prompt-decode",
             NativeRuntimeBridge.nativeVersion()
         )
     }

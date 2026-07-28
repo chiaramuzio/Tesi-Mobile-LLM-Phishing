@@ -1,0 +1,156 @@
+/no_think
+
+Sei un generatore di simulazioni educative per un'applicazione di Cybersecurity Awareness.
+
+Genera una email di phishing simulata in italiano, credibile ma sicura e destinata esclusivamente a un esercizio formativo.
+
+Restituisci soltanto un oggetto JSON valido.
+
+L'oggetto JSON deve contenere esattamente queste quattordici chiavi, nello stesso ordine:
+
+1. scenario
+2. difficulty
+3. length
+4. sender_name
+5. sender_address
+6. recipient
+7. subject
+8. body
+9. pretext
+10. cta_type
+11. cta_text
+12. present_indicators
+13. credibility_elements
+14. educational_summary
+
+ATTENZIONE: la chiave "body" è obbligatoria.
+Deve comparire immediatamente dopo "subject" e immediatamente prima di "pretext".
+Non omettere il body.
+Non generare present_indicators finché non hai completato il body.
+
+Usa esattamente questi valori:
+
+"scenario": "Account aziendale, webmail e servizi IT"
+"difficulty": "Media"
+"length": "Media"
+"sender_name": "Supporto IT"
+"sender_address": "supporto@aziendaesempio.invalid"
+"recipient": "utente@aziendaesempio.invalid"
+"subject": "Password aziendale in scadenza"
+"pretext": "Password in scadenza"
+"cta_type": "LOGIN"
+"cta_text": "Aggiorna la password"
+
+BODY OBBLIGATORIO
+
+Il valore di "body" deve essere una stringa non vuota contenente l'intera email.
+
+Il body deve essere composto da esattamente sei frasi:
+
+1. La prima frase deve iniziare esattamente con:
+"Gentile utente,"
+
+e deve comunicare che la password aziendale è prossima alla scadenza.
+
+2. La seconda frase deve spiegare che l'aggiornamento è richiesto dalla procedura di sicurezza aziendale per proteggere l'account.
+
+3. La terza frase deve essere esattamente:
+"Il mancato aggiornamento può provocare il blocco dell'account e la perdita temporanea dell'accesso."
+
+4. La quarta frase deve essere esattamente:
+"Accedi con il tuo nome utente e la tua password per completare l'aggiornamento."
+
+5. La quinta frase deve invitare a visitare:
+https://aziendaesempio.invalid
+
+L'URL deve comparire come testo semplice.
+
+6. La sesta e ultima frase deve essere esattamente:
+"Supporto IT"
+
+Il body deve inoltre:
+
+- essere scritto in italiano corretto, naturale e professionale;
+- usare sempre la forma "tu";
+- contenere una sola call to action principale;
+- non usare Markdown;
+- non contenere numeri telefonici;
+- non contenere domini diversi da quelli terminanti in .invalid;
+- non dichiarare che si tratta di una simulazione;
+- non introdurre procedure operative reali;
+- non aggiungere indicatori diversi dai tre richiesti.
+
+PRESENT_INDICATORS
+
+Dopo aver completato il body, genera "present_indicators".
+
+present_indicators deve essere un array con esattamente tre oggetti, in questo ordine:
+
+1. IND_URGENCY
+2. IND_SUSPICIOUS_LINK
+3. IND_CREDENTIAL_REQUEST
+
+Ogni oggetto deve contenere esattamente:
+
+id
+evidence
+explanation
+
+Per IND_URGENCY usa:
+
+"id": "IND_URGENCY"
+
+"evidence": "Il mancato aggiornamento può provocare il blocco dell'account e la perdita temporanea dell'accesso."
+
+L'explanation deve spiegare che il rischio di blocco e perdita dell'accesso crea pressione e urgenza.
+
+Per IND_SUSPICIOUS_LINK usa:
+
+"id": "IND_SUSPICIOUS_LINK"
+
+"evidence": "https://aziendaesempio.invalid"
+
+L'explanation deve spiegare che un collegamento ricevuto in una richiesta di accesso deve essere verificato prima di inserire credenziali.
+
+Per IND_CREDENTIAL_REQUEST usa:
+
+"id": "IND_CREDENTIAL_REQUEST"
+
+"evidence": "Accedi con il tuo nome utente e la tua password per completare l'aggiornamento."
+
+L'explanation deve spiegare che nome utente e password sono credenziali di accesso e non devono essere inseriti senza aver verificato la richiesta.
+
+Ogni evidence deve essere copiata letteralmente dal body già generato.
+Non inventare evidence esterne al body.
+Non parafrasare le evidence.
+
+CREDIBILITY_ELEMENTS
+
+"credibility_elements" deve contenere esattamente queste quattro stringhe, nello stesso ordine:
+
+"tono professionale"
+"firma del servizio IT"
+"riferimento a policy aziendali"
+"linguaggio tecnico plausibile"
+
+EDUCATIONAL_SUMMARY
+
+"educational_summary" deve:
+
+- essere scritto in italiano;
+- essere composto da una o due frasi;
+- spiegare che bisogna verificare urgenza, link e richieste di credenziali;
+- essere coerente con il body;
+- non introdurre indicatori assenti.
+
+VINCOLI FINALI
+
+- Il JSON deve avere tutte e quattordici le chiavi.
+- Il body non può essere assente, null o vuoto.
+- Scrivi prima il body e solo dopo gli indicatori.
+- Il primo carattere della risposta deve essere {.
+- L'ultimo carattere della risposta deve essere }.
+- Non inserire testo prima o dopo il JSON.
+- Non inserire blocchi Markdown.
+- Non inserire tag thinking dentro il JSON.
+- Non generare distrattori o opzioni del quiz.
