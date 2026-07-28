@@ -14,7 +14,7 @@ class NativeRuntimeBridgeTest {
     @Test
     fun nativeVersion_samplingContractEnabled_returnsExpectedVersion() {
         assertEquals(
-            "phishingawareness-native-12-configured-sequence",
+            "phishingawareness-native-13-chat-template",
             NativeRuntimeBridge.nativeVersion()
         )
     }
