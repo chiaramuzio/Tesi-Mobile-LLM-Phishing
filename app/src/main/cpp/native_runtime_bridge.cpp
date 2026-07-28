@@ -2098,13 +2098,13 @@ namespace {
                 << "|FORMATTED_CHAR_COUNT|"
                 << formattedPromptValue.size()
                 << "|PROMPT_TOKEN_COUNT|"
+                << promptTokenCount
                 << "|BATCH_SIZE|"
                 << llama_n_batch(
                         inferenceContext
                 )
                 << "|DECODED_BATCH_COUNT|"
                 << decodedBatchCount
-                << promptTokenCount
                 << "|CONTEXT_SIZE|"
                 << contextSize
                 << "|AVAILABLE_OUTPUT_TOKENS|"

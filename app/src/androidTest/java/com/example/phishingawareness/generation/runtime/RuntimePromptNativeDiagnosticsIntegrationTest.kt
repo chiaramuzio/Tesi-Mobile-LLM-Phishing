@@ -11,6 +11,7 @@ import com.example.phishingawareness.generation.model.LocalModelBootstrapResult
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Assert.assertEquals
 
 class RuntimePromptNativeDiagnosticsIntegrationTest {
 
@@ -112,12 +113,80 @@ class RuntimePromptNativeDiagnosticsIntegrationTest {
                 )
             )
 
+            val promptTokenCount =
+                nativeInspection
+                    .substringAfter(
+                        "|PROMPT_TOKEN_COUNT|"
+                    )
+                    .substringBefore(
+                        "|BATCH_SIZE|"
+                    )
+                    .toIntOrNull()
+
+            val batchSize =
+                nativeInspection
+                    .substringAfter(
+                        "|BATCH_SIZE|"
+                    )
+                    .substringBefore(
+                        "|DECODED_BATCH_COUNT|"
+                    )
+                    .toIntOrNull()
+
+            val decodedBatchCount =
+                nativeInspection
+                    .substringAfter(
+                        "|DECODED_BATCH_COUNT|"
+                    )
+                    .substringBefore(
+                        "|CONTEXT_SIZE|"
+                    )
+                    .toIntOrNull()
+
+            assertTrue(
+                "PROMPT_TOKEN_COUNT assente o non valido: $nativeInspection",
+                promptTokenCount != null &&
+                        promptTokenCount > 0
+            )
+
+            assertTrue(
+                "BATCH_SIZE assente o non valido: $nativeInspection",
+                batchSize != null &&
+                        batchSize > 0
+            )
+
+            assertTrue(
+                "DECODED_BATCH_COUNT assente o non valido: $nativeInspection",
+                decodedBatchCount != null &&
+                        decodedBatchCount > 0
+            )
+
             assertTrue(
                 "Context operativo inatteso: $nativeInspection",
                 nativeInspection.contains(
                     "|CONTEXT_SIZE|8192|"
                 )
             )
+
+            val availableOutputTokens =
+                nativeInspection
+                    .substringAfter(
+                        "|AVAILABLE_OUTPUT_TOKENS|"
+                    )
+                    .substringBefore(
+                        "|TEMPLATE_MS|"
+                    )
+                    .toIntOrNull()
+
+            assertEquals(
+                "AVAILABLE_OUTPUT_TOKENS non è coerente " +
+                        "con context e prompt token.",
+                CONTEXT_SIZE - requireNotNull(
+                    promptTokenCount
+                ),
+                availableOutputTokens
+            )
+
         } finally {
             bootstrap.release()
 

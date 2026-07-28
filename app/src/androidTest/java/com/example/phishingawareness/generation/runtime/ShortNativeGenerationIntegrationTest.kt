@@ -10,6 +10,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
 
 class ShortNativeGenerationIntegrationTest {
 
@@ -91,6 +93,24 @@ class ShortNativeGenerationIntegrationTest {
                     protocol = nativeProtocol
                 )
 
+            val independentlyDecodedRawText =
+                decodeUtf8Hex(
+                    value = outputHex
+                )
+
+            assertEquals(
+                "Il raw text non corrisponde alla decodifica UTF-8 " +
+                        "indipendente di OUTPUT_HEX.",
+                independentlyDecodedRawText,
+                result.rawText
+            )
+
+            assertEquals(
+                "Il protocollo non conserva il limite di token richiesto.",
+                MAX_GENERATED_TOKENS,
+                result.requestedTokenCount
+            )
+
             println(
                 "SHORT_NATIVE_TOKEN_IDS|" +
                         "count=${result.tokenIds.size}|" +
@@ -129,6 +149,27 @@ class ShortNativeGenerationIntegrationTest {
                 "Il raw text contiene il marker EOG escapato.",
                 escapedRawText.contains(
                     "<end_of_turn>"
+                )
+            )
+
+            assertFalse(
+                "Il raw text contiene il prefisso completo del turno utente.",
+                result.rawText.contains(
+                    "<start_of_turn>user\n"
+                )
+            )
+
+            assertFalse(
+                "Il raw text contiene il prefisso completo del turno modello.",
+                result.rawText.contains(
+                    "<start_of_turn>model\n"
+                )
+            )
+
+            assertFalse(
+                "Il raw text ripete letteralmente il prompt diagnostico.",
+                result.rawText.contains(
+                    TEST_PROMPT
                 )
             )
 
@@ -222,5 +263,43 @@ class ShortNativeGenerationIntegrationTest {
         const val TEST_PROMPT =
             "Rispondi in italiano con una sola frase " +
                     "molto breve che saluti l'utente."
+    }
+
+    private fun decodeUtf8Hex(
+        value: String
+    ): String {
+        require(value.length % 2 == 0) {
+            "OUTPUT_HEX ha lunghezza dispari."
+        }
+
+        val bytes =
+            ByteArray(
+                size = value.length / 2
+            ) { index ->
+                value
+                    .substring(
+                        startIndex = index * 2,
+                        endIndex = index * 2 + 2
+                    )
+                    .toInt(
+                        radix = 16
+                    )
+                    .toByte()
+            }
+
+        return Charsets.UTF_8
+            .newDecoder()
+            .onMalformedInput(
+                CodingErrorAction.REPORT
+            )
+            .onUnmappableCharacter(
+                CodingErrorAction.REPORT
+            )
+            .decode(
+                ByteBuffer.wrap(
+                    bytes
+                )
+            )
+            .toString()
     }
 }
