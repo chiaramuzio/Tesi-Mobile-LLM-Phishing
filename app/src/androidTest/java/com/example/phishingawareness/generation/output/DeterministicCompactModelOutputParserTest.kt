@@ -88,6 +88,50 @@ class DeterministicCompactModelOutputParserTest {
     }
 
     @Test
+    fun parse_jsonMarkdownFence_isAccepted() {
+        val fencedOutput =
+            """
+        ```json
+        ${validCompactBankingOutput()}
+        ```
+        """.trimIndent()
+
+        val result =
+            parser.parse(
+                CompactModelOutputParseRequest(
+                    rawOutput = fencedOutput,
+                    expectedScenario = Scenario.BANKING
+                )
+            )
+
+        assertTrue(
+            result is CompactModelOutputParseResult.Success
+        )
+    }
+
+    @Test
+    fun parse_plainMarkdownFence_isAccepted() {
+        val fencedOutput =
+            """
+        ```
+        ${validCompactBankingOutput()}
+        ```
+        """.trimIndent()
+
+        val result =
+            parser.parse(
+                CompactModelOutputParseRequest(
+                    rawOutput = fencedOutput,
+                    expectedScenario = Scenario.BANKING
+                )
+            )
+
+        assertTrue(
+            result is CompactModelOutputParseResult.Success
+        )
+    }
+
+    @Test
     fun parse_emptyOutput_returnsStructuredFailure() {
         val result =
             parser.parse(
@@ -113,6 +157,90 @@ class DeterministicCompactModelOutputParserTest {
                 CompactModelOutputParseRequest(
                     rawOutput =
                         "Risposta: ${validCompactBankingOutput()}",
+                    expectedScenario = Scenario.BANKING
+                )
+            )
+
+        val failure =
+            result as CompactModelOutputParseResult.Failure
+
+        assertEquals(
+            ModelOutputParseIssueCode.INVALID_JSON_BOUNDARY,
+            failure.issues.single().code
+        )
+    }
+
+    @Test
+    fun parse_textAroundFencedJson_returnsBoundaryFailure() {
+        val fencedOutput =
+            """
+        Risposta del modello:
+        ```json
+        ${validCompactBankingOutput()}
+        ```
+        """.trimIndent()
+
+        val result =
+            parser.parse(
+                CompactModelOutputParseRequest(
+                    rawOutput = fencedOutput,
+                    expectedScenario = Scenario.BANKING
+                )
+            )
+
+        val failure =
+            result as CompactModelOutputParseResult.Failure
+
+        assertEquals(
+            ModelOutputParseIssueCode.INVALID_JSON_BOUNDARY,
+            failure.issues.single().code
+        )
+    }
+
+    @Test
+    fun parse_unclosedMarkdownFence_returnsBoundaryFailure() {
+        val fencedOutput =
+            """
+        ```json
+        ${validCompactBankingOutput()}
+        """.trimIndent()
+
+        val result =
+            parser.parse(
+                CompactModelOutputParseRequest(
+                    rawOutput = fencedOutput,
+                    expectedScenario = Scenario.BANKING
+                )
+            )
+
+        val failure =
+            result as CompactModelOutputParseResult.Failure
+
+        assertEquals(
+            ModelOutputParseIssueCode.INVALID_JSON_BOUNDARY,
+            failure.issues.single().code
+        )
+    }
+
+    @Test
+    fun parse_nestedMarkdownFence_returnsBoundaryFailure() {
+        val fencedOutput =
+            """
+        ```json
+        {
+          "sender_name": "Esempio",
+          "sender_address": "supporto@esempio.invalid",
+          "subject": "Esempio",
+          "body": "```contenuto```",
+          "present_indicators": []
+        }
+        ```
+        """.trimIndent()
+
+        val result =
+            parser.parse(
+                CompactModelOutputParseRequest(
+                    rawOutput = fencedOutput,
                     expectedScenario = Scenario.BANKING
                 )
             )

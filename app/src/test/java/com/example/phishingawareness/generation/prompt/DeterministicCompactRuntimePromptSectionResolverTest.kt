@@ -132,13 +132,55 @@ class DeterministicCompactRuntimePromptSectionResolverTest {
 
         assertTrue(
             output.contains(
-                "Restituisci esclusivamente un singolo oggetto JSON valido."
+                "Restituisci esclusivamente un singolo oggetto JSON grezzo e valido."
+            )
+        )
+
+        assertTrue(
+            output.contains(
+                "Il primo carattere dell'output deve essere {."
+            )
+        )
+
+        assertTrue(
+            output.contains(
+                "L'ultimo carattere dell'output deve essere }."
             )
         )
 
         assertTrue(
             output.contains(
                 "Non usare Markdown"
+            )
+        )
+
+        assertTrue(
+            output.contains(
+                "blocchi di codice"
+            )
+        )
+
+        assertTrue(
+            output.contains(
+                "backtick"
+            )
+        )
+
+        assertTrue(
+            output.contains(
+                "delimitatori ```"
+            )
+        )
+
+        assertTrue(
+            output.contains(
+                "etichette json"
+            )
+        )
+
+        assertTrue(
+            output.contains(
+                "testo prima o dopo il JSON"
             )
         )
 

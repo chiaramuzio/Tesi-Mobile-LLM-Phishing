@@ -18,24 +18,22 @@ class DeterministicCompactModelOutputParser(
     fun parse(
         request: CompactModelOutputParseRequest
     ): CompactModelOutputParseResult {
-        val normalizedOutput = request.rawOutput.trim()
+        val trimmedOutput = request.rawOutput.trim()
 
-        if (normalizedOutput.isEmpty()) {
+        if (trimmedOutput.isEmpty()) {
             return failure(
                 code = ModelOutputParseIssueCode.EMPTY_OUTPUT,
                 field = "rawOutput"
             )
         }
 
-        if (
-            !normalizedOutput.startsWith("{") ||
-            !normalizedOutput.endsWith("}")
-        ) {
-            return failure(
-                code = ModelOutputParseIssueCode.INVALID_JSON_BOUNDARY,
-                field = "rawOutput"
-            )
-        }
+        val normalizedOutput =
+            normalizeJsonContainer(trimmedOutput)
+                ?: return failure(
+                    code = ModelOutputParseIssueCode.INVALID_JSON_BOUNDARY,
+                    field = "rawOutput"
+                )
+
 
         val root =
             try {
@@ -101,6 +99,59 @@ class DeterministicCompactModelOutputParser(
             )
         )
     }
+
+private fun normalizeJsonContainer(
+    rawOutput: String
+): String? {
+    if (
+        rawOutput.startsWith("{") &&
+        rawOutput.endsWith("}")
+    ) {
+        return rawOutput
+    }
+
+    val lines = rawOutput.lines()
+
+    if (lines.size < 3) {
+        return null
+    }
+
+    val openingFence = lines.first().trim()
+    val closingFence = lines.last().trim()
+
+    val hasSupportedOpeningFence =
+        openingFence == "```json" ||
+                openingFence == "```"
+
+    if (
+        !hasSupportedOpeningFence ||
+        closingFence != "```"
+    ) {
+        return null
+    }
+
+    val jsonPayload =
+        lines
+            .subList(
+                fromIndex = 1,
+                toIndex = lines.lastIndex
+            )
+            .joinToString(separator = "\n")
+            .trim()
+
+    if (
+        !jsonPayload.startsWith("{") ||
+        !jsonPayload.endsWith("}")
+    ) {
+        return null
+    }
+
+    if (jsonPayload.contains("```")) {
+        return null
+    }
+
+    return jsonPayload
+}
 
     private fun readRequiredString(
         root: JSONObject,

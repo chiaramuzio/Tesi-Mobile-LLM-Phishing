@@ -42,9 +42,12 @@ class DeterministicCompactRuntimePromptSectionResolver(
             id = SECTION_OUTPUT_FORMAT,
             content = """
                 FORMATO OBBLIGATORIO
-                Restituisci esclusivamente un singolo oggetto JSON valido.
-                Non usare Markdown, delimitatori ``` o testo prima o dopo il JSON.
-                Usa esattamente questa struttura:
+Restituisci esclusivamente un singolo oggetto JSON grezzo e valido.
+Il primo carattere dell'output deve essere {.
+L'ultimo carattere dell'output deve essere }.
+Non usare Markdown, blocchi di codice, backtick, delimitatori ```,
+etichette json, introduzioni, commenti o testo prima o dopo il JSON.
+Usa esattamente questa struttura:
                 {
                   "sender_name": "string",
                   "sender_address": "string",
