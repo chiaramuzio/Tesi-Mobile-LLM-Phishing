@@ -14,13 +14,17 @@ import org.json.JSONException
 import org.json.JSONObject
 
 class DeterministicModelOutputParser(
-    private val libraryRepository: LibraryRepository
+    private val libraryRepository: LibraryRepository,
+    private val jsonObjectExtractor:
+    DeterministicJsonObjectExtractor =
+        DeterministicJsonObjectExtractor()
 ) : ModelOutputParser {
 
     override fun parse(
         request: ModelOutputParseRequest
     ): ModelOutputParseResult {
-        val normalizedOutput = request.rawOutput.trim()
+        val normalizedOutput =
+            request.rawOutput.trim()
 
         if (normalizedOutput.isEmpty()) {
             return failure(
@@ -29,21 +33,20 @@ class DeterministicModelOutputParser(
             )
         }
 
-        if (
-            !normalizedOutput.startsWith("{") ||
-            !normalizedOutput.endsWith("}")
-        ) {
-            return failure(
-                code =
-                    ModelOutputParseIssueCode
-                        .INVALID_JSON_BOUNDARY,
-                field = "rawOutput"
+        val jsonObject =
+            jsonObjectExtractor.extract(
+                rawOutput = normalizedOutput
             )
-        }
+                ?: return failure(
+                    code =
+                        ModelOutputParseIssueCode
+                            .INVALID_JSON_BOUNDARY,
+                    field = "rawOutput"
+                )
 
         val root =
             try {
-                JSONObject(normalizedOutput)
+                JSONObject(jsonObject)
             } catch (exception: JSONException) {
                 return failure(
                     code =

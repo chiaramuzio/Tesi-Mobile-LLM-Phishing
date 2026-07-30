@@ -87,7 +87,7 @@ class DeterministicModelOutputParserTest {
     }
 
     @Test
-    fun parse_textAroundJson_returnsBoundaryFailure() {
+    fun parse_textAroundJson_returnsSuccess() {
         val result =
             parser.parse(
                 ModelOutputParseRequest(
@@ -97,13 +97,40 @@ class DeterministicModelOutputParserTest {
                 )
             )
 
-        val failure =
-            result as ModelOutputParseResult.Failure
+        assertTrue(
+            result is ModelOutputParseResult.Success
+        )
+    }
+
+    @Test
+    fun parse_emptyQwenThinkWrapperBeforeJson_returnsSuccess() {
+        val rawOutput =
+            """
+            <think>
+
+            </think>
+            ${validBankingOutput()}
+            """.trimIndent()
+
+        val result =
+            parser.parse(
+                ModelOutputParseRequest(
+                    rawOutput = rawOutput,
+                    expectedScenario = Scenario.BANKING
+                )
+            )
+
+        assertTrue(
+            result is ModelOutputParseResult.Success
+        )
+
+        val email =
+            (result as ModelOutputParseResult.Success)
+                .email
 
         assertEquals(
-            ModelOutputParseIssueCode
-                .INVALID_JSON_BOUNDARY,
-            failure.issues.single().code
+            "Servizio Sicurezza Banca Esempio",
+            email.senderName
         )
     }
 
