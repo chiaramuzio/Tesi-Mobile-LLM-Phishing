@@ -15,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import java.util.ArrayDeque
@@ -261,6 +262,279 @@ class CompactExerciseViewModelTest {
 
         assertFalse(
             viewModel.isGenerationRunning()
+        )
+    }
+
+    @Test
+    fun completedGeneration_exposesExerciseAndEmptyQuizState() {
+        val executor =
+            QueuedExecutor()
+
+        val viewModel =
+            viewModel(
+                generator =
+                    StubCompactExerciseGenerator(
+                        result = successfulResult()
+                    ),
+                executor = executor
+            )
+
+        viewModel.startGeneration()
+        executor.runNext()
+
+        val exercise =
+            requireNotNull(
+                viewModel.exercise.value
+            )
+
+        assertEquals(
+            "Supporto IT",
+            exercise.email.senderName
+        )
+
+        assertEquals(
+            6,
+            exercise.quizOptions.size
+        )
+
+        assertEquals(
+            emptySet<String>(),
+            viewModel.selectedOptionIds.value
+        )
+
+        assertNull(
+            viewModel.quizResult.value
+        )
+    }
+
+    @Test
+    fun setOptionSelected_updatesSelectionsAndClearsResult() {
+        val executor =
+            QueuedExecutor()
+
+        val viewModel =
+            viewModel(
+                generator =
+                    StubCompactExerciseGenerator(
+                        result = successfulResult()
+                    ),
+                executor = executor
+            )
+
+        viewModel.startGeneration()
+        executor.runNext()
+
+        viewModel.setOptionSelected(
+            optionId =
+                "URGENCY_PRESSURE",
+            isSelected = true
+        )
+
+        assertEquals(
+            setOf("URGENCY_PRESSURE"),
+            viewModel.selectedOptionIds.value
+        )
+
+        viewModel.submitQuiz()
+
+        assertTrue(
+            viewModel.quizResult.value != null
+        )
+
+        viewModel.setOptionSelected(
+            optionId =
+                "URGENCY_PRESSURE",
+            isSelected = false
+        )
+
+        assertEquals(
+            emptySet<String>(),
+            viewModel.selectedOptionIds.value
+        )
+
+        assertNull(
+            viewModel.quizResult.value
+        )
+    }
+
+    @Test
+    fun submitQuiz_countsCorrectAndIncorrectSelections() {
+        val executor =
+            QueuedExecutor()
+
+        val viewModel =
+            viewModel(
+                generator =
+                    StubCompactExerciseGenerator(
+                        result = successfulResult()
+                    ),
+                executor = executor
+            )
+
+        viewModel.startGeneration()
+        executor.runNext()
+
+        viewModel.setOptionSelected(
+            optionId =
+                "URGENCY_PRESSURE",
+            isSelected = true
+        )
+
+        viewModel.setOptionSelected(
+            optionId =
+                "DISTRACTOR_1",
+            isSelected = true
+        )
+
+        viewModel.submitQuiz()
+
+        val result =
+            requireNotNull(
+                viewModel.quizResult.value
+            )
+
+        assertEquals(
+            1,
+            result.correctSelected
+        )
+
+        assertEquals(
+            1,
+            result.totalCorrect
+        )
+
+        assertEquals(
+            1,
+            result.incorrectSelected
+        )
+    }
+
+    @Test
+    fun setOptionSelected_ignoresUnknownOptionId() {
+        val executor =
+            QueuedExecutor()
+
+        val viewModel =
+            viewModel(
+                generator =
+                    StubCompactExerciseGenerator(
+                        result = successfulResult()
+                    ),
+                executor = executor
+            )
+
+        viewModel.startGeneration()
+        executor.runNext()
+
+        viewModel.setOptionSelected(
+            optionId =
+                "UNKNOWN_OPTION",
+            isSelected = true
+        )
+
+        assertEquals(
+            emptySet<String>(),
+            viewModel.selectedOptionIds.value
+        )
+
+        assertNull(
+            viewModel.quizResult.value
+        )
+    }
+
+    @Test
+    fun quizActionsBeforeGeneration_doNothing() {
+        val viewModel =
+            viewModel(
+                generator =
+                    StubCompactExerciseGenerator(
+                        result = successfulResult()
+                    )
+            )
+
+        viewModel.setOptionSelected(
+            optionId =
+                "URGENCY_PRESSURE",
+            isSelected = true
+        )
+
+        viewModel.submitQuiz()
+
+        assertEquals(
+            emptySet<String>(),
+            viewModel.selectedOptionIds.value
+        )
+
+        assertNull(
+            viewModel.quizResult.value
+        )
+
+        assertNull(
+            viewModel.exercise.value
+        )
+    }
+
+    @Test
+    fun newGeneration_resetsExerciseSelectionsAndResultWhileLoading() {
+        val executor =
+            QueuedExecutor()
+
+        val viewModel =
+            viewModel(
+                generator =
+                    StubCompactExerciseGenerator(
+                        result = successfulResult()
+                    ),
+                executor = executor
+            )
+
+        viewModel.startGeneration()
+        executor.runNext()
+
+        viewModel.setOptionSelected(
+            optionId =
+                "URGENCY_PRESSURE",
+            isSelected = true
+        )
+
+        viewModel.submitQuiz()
+
+        assertTrue(
+            viewModel.exercise.value != null
+        )
+
+        assertTrue(
+            viewModel.selectedOptionIds
+                .value
+                .orEmpty()
+                .isNotEmpty()
+        )
+
+        assertTrue(
+            viewModel.quizResult.value != null
+        )
+
+        val restarted =
+            viewModel.startGeneration()
+
+        assertTrue(restarted)
+
+        assertSame(
+            CompactExerciseUiState.Loading,
+            viewModel.uiState.value
+        )
+
+        assertNull(
+            viewModel.exercise.value
+        )
+
+        assertEquals(
+            emptySet<String>(),
+            viewModel.selectedOptionIds.value
+        )
+
+        assertNull(
+            viewModel.quizResult.value
         )
     }
 
