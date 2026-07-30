@@ -12,7 +12,7 @@ class GenerateCompactExerciseUseCase(
     CompactLocalEmailGenerator,
     private val buildQuizOptionsUseCase:
     BuildQuizOptionsUseCase
-) {
+) : CompactExerciseGenerator {
 
     operator fun invoke(
         request: GenerationRequest,
@@ -83,6 +83,14 @@ class GenerateCompactExerciseUseCase(
                 emailSuccess.promptMetadata,
             executionMetadata =
                 emailSuccess.executionMetadata
+        )
+    }
+
+    override fun generate(
+        request: GenerationRequest
+    ): CompactExerciseGenerationResult {
+        return invoke(
+            request = request
         )
     }
 
