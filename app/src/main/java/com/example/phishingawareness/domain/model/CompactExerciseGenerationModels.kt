@@ -21,5 +21,9 @@ sealed class CompactExerciseGenerationResult {
         data class QuizBuilding(
             val details: String
         ) : Failure()
+
+        data class RuntimeLifecycle(
+            val details: String
+        ) : Failure()
     }
 }
