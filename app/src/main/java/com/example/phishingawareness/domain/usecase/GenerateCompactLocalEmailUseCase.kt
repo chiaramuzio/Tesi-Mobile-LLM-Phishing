@@ -23,12 +23,11 @@ class GenerateCompactLocalEmailUseCase(
     CompactModelOutputParser,
     private val compactParsedEmailMapper:
     CompactParsedEmailMapper
-) {
+) : CompactLocalEmailGenerator {
 
-    operator fun invoke(
+    override operator fun invoke(
         request: GenerationRequest,
-        options: LocalEmailGenerationOptions =
-            LocalEmailGenerationOptions()
+        options: LocalEmailGenerationOptions
     ): LocalEmailGenerationResult {
         val expectedScenario =
             mapScenario(request.scenarioId)
