@@ -15,7 +15,7 @@ android {
     ndkVersion = "30.0.15729638"
 
     defaultConfig {
-        applicationId = "com.example.phishingawareness"
+        applicationId = "com.example.phishingawareness.qwen"
         minSdk = 28
         targetSdk = 36
         versionCode = 1

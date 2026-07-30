@@ -6,7 +6,7 @@ import java.io.File
 /**
  * Risolve il modello nella directory esterna privata dell'app:
  *
- * files/models/gemma-3-4b-it-q4_0.gguf
+ * files/models/Qwen3-1.7B-Q8_0.gguf
  *
  * Non copia, scarica o modifica il modello.
  */
@@ -28,7 +28,7 @@ class AndroidLocalModelPathProvider(
                             .EXTERNAL_DIRECTORY_NOT_AVAILABLE,
                     details =
                         "La directory esterna privata dell'app " +
-                                "non è disponibile."
+                                "non Ã¨ disponibile."
                 )
 
         val modelFile =
@@ -97,9 +97,9 @@ class AndroidLocalModelPathProvider(
             "models"
 
         const val MODEL_FILE_NAME =
-            "gemma-3-4b-it-q4_0.gguf"
+            "Qwen3-1.7B-Q8_0.gguf"
 
         const val EXPECTED_MODEL_SIZE_BYTES =
-            3_155_051_328L
+            1_834_426_016L
     }
 }
