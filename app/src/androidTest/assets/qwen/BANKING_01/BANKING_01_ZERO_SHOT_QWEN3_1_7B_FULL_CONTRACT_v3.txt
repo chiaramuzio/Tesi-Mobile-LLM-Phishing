@@ -1,0 +1,137 @@
+/no_think
+
+Sei un generatore di simulazioni educative per un'applicazione di Cybersecurity Awareness.
+
+Genera una email di phishing simulata in italiano, credibile ma sicura e destinata esclusivamente a un esercizio formativo.
+
+Restituisci soltanto un oggetto JSON valido.
+
+L'oggetto JSON deve contenere esattamente queste quattordici chiavi, nello stesso ordine:
+
+1. scenario
+2. difficulty
+3. length
+4. sender_name
+5. sender_address
+6. recipient
+7. subject
+8. body
+9. pretext
+10. cta_type
+11. cta_text
+12. present_indicators
+13. credibility_elements
+14. educational_summary
+
+Ogni oggetto di "present_indicators" deve contenere esattamente queste tre chiavi, nello stesso ordine:
+
+1. id
+2. evidence
+3. explanation
+
+ATTENZIONE: la chiave "body" è obbligatoria.
+Deve comparire immediatamente dopo "subject" e immediatamente prima di "pretext".
+Non omettere il body.
+Non generare present_indicators finché non hai completato il body.
+
+Usa esattamente questi valori:
+
+"scenario": "Bancario e pagamenti"
+"difficulty": "Media"
+"length": "Media"
+"sender_name": "Servizio Sicurezza Banca Esempio"
+"sender_address": "sicurezza@bancaesempio.invalid"
+"recipient": "utente@bancaesempio.invalid"
+"subject": "Accesso sospetto al conto"
+"pretext": "Accesso sospetto"
+"cta_type": "LOGIN"
+"cta_text": "Accedi al conto"
+
+BODY OBBLIGATORIO
+
+Il valore di "body" deve essere esattamente il testo seguente, conservando parole, accenti, punteggiatura, maiuscole, spazi e interruzioni di riga:
+
+Gentile cliente,
+Abbiamo rilevato un accesso non autorizzato al conto terminante in ****1234 da un dispositivo sconosciuto, associato a una posizione geografica insolita e registrato in un orario anomalo. L'attività non corrisponde ai normali accessi osservati sul conto e richiede una verifica tempestiva. Il controllo è stato attivato automaticamente dai sistemi di sicurezza per limitare possibili utilizzi non autorizzati del servizio bancario.
+
+Accedi immediatamente per evitare la sospensione temporanea del conto.
+Effettua il login con il tuo nome utente e la tua password per verificare l'accesso.
+https://bancaesempio.invalid/login
+
+Questa verifica è richiesta per proteggere il conto e mantenere attive le misure di sicurezza applicate da Banca Esempio.
+
+ATTENZIONE: questa frase deve rimanere esattamente in italiano.
+Non tradurla in inglese e non riscriverla:
+"Questa verifica è richiesta per proteggere il conto e mantenere attive le misure di sicurezza applicate da Banca Esempio."
+
+Cordiali saluti,
+Servizio Sicurezza Banca Esempio
+
+Non aggiungere, rimuovere, riscrivere o spostare parti del body.
+
+Il body deve essere rappresentato come una singola stringa JSON valida usando \n per le interruzioni di riga.
+
+PRESENT_INDICATORS
+
+Dopo aver completato il body, genera "present_indicators".
+
+present_indicators deve essere un array con esattamente tre oggetti, in questo ordine:
+
+1. IND_URGENCY
+2. IND_SUSPICIOUS_LINK
+3. IND_CREDENTIAL_REQUEST
+
+Il primo oggetto deve essere:
+
+"id": "IND_URGENCY"
+"evidence": "Accedi immediatamente per evitare la sospensione temporanea del conto."
+"explanation": "La minaccia di sospensione temporanea del conto crea pressione e urgenza."
+
+Il secondo oggetto deve essere:
+
+"id": "IND_SUSPICIOUS_LINK"
+"evidence": "https://bancaesempio.invalid/login"
+"explanation": "Un collegamento ricevuto in una richiesta bancaria deve essere verificato prima di inserire credenziali."
+
+Il terzo oggetto deve essere:
+
+"id": "IND_CREDENTIAL_REQUEST"
+"evidence": "Effettua il login con il tuo nome utente e la tua password per verificare l'accesso."
+"explanation": "Nome utente e password sono credenziali di accesso e non devono essere inseriti senza aver verificato la richiesta."
+
+Ogni evidence deve essere identica carattere per carattere alla corrispondente sottostringa del body.
+Non inventare evidence esterne al body.
+Non parafrasare le evidence.
+
+CREDIBILITY_ELEMENTS
+
+"credibility_elements" deve contenere esattamente queste quattro stringhe, nello stesso ordine:
+
+"tono professionale"
+"pretesto plausibile"
+"firma del servizio"
+"riferimento alla sicurezza del conto"
+
+EDUCATIONAL_SUMMARY
+
+"educational_summary" deve essere esattamente:
+
+"Bisogna verificare urgenza, link e richieste di credenziali prima di accedere a un conto tramite un messaggio ricevuto."
+
+VINCOLI FINALI
+
+- Il JSON deve contenere tutte e quattordici le chiavi richieste.
+- Ogni indicatore deve contenere id, evidence ed explanation.
+- Il body non può essere assente, null o vuoto.
+- Il body deve essere copiato esattamente dal testo obbligatorio.
+- Tutti i domini devono terminare in bancaesempio.invalid.
+- Il primo carattere della risposta deve essere {.
+- L'ultimo carattere della risposta deve essere }.
+- Non inserire testo prima o dopo il JSON.
+- Non inserire blocchi Markdown.
+- Non inserire tag thinking dentro il JSON.
+- Non generare distrattori o opzioni del quiz.
+- Tutti i valori testuali del JSON devono essere esclusivamente in italiano.
+- Non inserire parole o frasi in inglese.
+- Prima di rispondere verifica internamente che il body contenga esattamente la frase:
+"Questa verifica è richiesta per proteggere il conto e mantenere attive le misure di sicurezza applicate da Banca Esempio."
